@@ -13,6 +13,8 @@ data Model
   }
   deriving (Show, Read)
 
+data Msg = Increment | Decrement | Quit | Nop deriving (Show, Eq)
+
 dataFile :: FilePath
 dataFile = "taska.txt"
 
@@ -27,29 +29,42 @@ main = do
 loop :: Model -> IO ()
 loop model = do
   view model
+  msg <- readMsg
+  if msg == Quit
+    then do
+      persistModel model
+      putStrLn "Bye"
+    else do
+      let newModel = update msg model
+      persistModel newModel
+      loop newModel {tick = tick newModel + 1}
+
+readMsg :: IO Msg
+readMsg = do
   hSetBuffering stdin NoBuffering
   c <- getChar
   hSetBuffering stdin LineBuffering
   putStrLn ""
-  newModel <- update c model
-  if counter newModel == 0
-    then do
-      persistModel newModel
-      putStrLn "Bye."
-    else do
-      persistModel newModel
-      loop newModel
+  return (toMsg c)
+
+toMsg :: Char -> Msg
+toMsg c = case c of
+  'u' -> Increment
+  'd' -> Decrement
+  'q' -> Quit
+  _ -> Nop
 
 persistModel :: Model -> IO ()
 persistModel model =
   writeFile dataFile (show model)
 
-update :: Char -> Model -> IO Model
-update c model
-  | c == 'u' = return (model {counter = counter model + 1})
-  | c == 'd' = return (model {counter = counter model - 1})
-  | c == 'q' = return (model {counter = 0})
-  | otherwise = return model
+update :: Msg -> Model -> Model
+update msg model =
+  case msg of
+    Increment -> model {counter = counter model + 1}
+    Decrement -> model {counter = counter model - 1}
+    Quit -> model
+    Nop -> model
 
 view :: Model -> IO ()
 view model = do
