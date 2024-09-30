@@ -9,18 +9,19 @@ import Text.Read (readMaybe)
 data Model
   = Model
   { tick :: Int,
-    counter :: Int
+    counter :: Int,
+    addMode :: Bool
   }
   deriving (Show, Read)
 
-data Msg = Increment | Decrement | Quit | Nop deriving (Show, Eq)
+data Msg = Increment | Decrement | AddMode | Quit | Nop deriving (Show, Eq)
 
 dataFile :: FilePath
 dataFile = "taska.txt"
 
 main :: IO ()
 main = do
-  databaseStr <- catchIOError (readFile dataFile) (\_ -> return (show Model {tick = 0, counter = 0}))
+  databaseStr <- catchIOError (readFile dataFile) (\_ -> return (show Model {tick = 0, counter = 0, addMode = False}))
   let db = readMaybe databaseStr :: Maybe Model
   case db of
     Nothing -> putStrLn "Corrupt database file."
@@ -35,9 +36,13 @@ loop model = do
       persistModel model
       putStrLn "Bye"
     else do
-      let newModel = update msg model
-      persistModel newModel
-      loop newModel {tick = tick newModel + 1}
+      if msg == Nop
+        then do
+          loop model
+        else do
+          let newModel = update msg model
+          persistModel newModel
+          loop newModel {tick = tick newModel + 1}
 
 readMsg :: IO Msg
 readMsg = do
@@ -51,6 +56,7 @@ toMsg :: Char -> Msg
 toMsg c = case c of
   'u' -> Increment
   'd' -> Decrement
+  'a' -> AddMode
   'q' -> Quit
   _ -> Nop
 
@@ -63,6 +69,7 @@ update msg model =
   case msg of
     Increment -> model {counter = counter model + 1}
     Decrement -> model {counter = counter model - 1}
+    AddMode -> model {addMode = True}
     Quit -> model
     Nop -> model
 
