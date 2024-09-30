@@ -35,4 +35,6 @@ view model = do
   clearScreen
   setCursorPosition 0 0
   putStrLn ("The model is " ++ show model)
+  putStrLn ""
+  putStrLn ""
   putStrLn "'u' to up, 'd' to down, 'q' to quit. Value of 0 also quits."
