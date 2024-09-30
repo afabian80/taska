@@ -1,22 +1,27 @@
-module Main where
+module Main (main) where
 
 import GHC.IO.Handle (BufferMode (LineBuffering, NoBuffering), hSetBuffering)
 import GHC.IO.Handle.FD (stdin)
 import System.Console.ANSI (clearScreen, setCursorPosition)
+import System.IO.Error (catchIOError)
 import Text.Read (readMaybe)
 
-type Model = Int
+newtype Model
+  = Model
+  { tick :: Int
+  }
+  deriving (Show, Read)
 
 dataFile :: FilePath
 dataFile = "taska.txt"
 
 main :: IO ()
 main = do
-  databaseStr <- readFile dataFile
-  let db = readMaybe databaseStr
+  databaseStr <- catchIOError (readFile dataFile) (\_ -> return (show Model {tick = 0}))
+  let db = readMaybe databaseStr :: Maybe Model
   case db of
+    Nothing -> putStrLn "Corrupt database file."
     Just s -> loop s
-    _ -> putStrLn "Corrupt database file."
 
 loop :: Model -> IO ()
 loop model = do
@@ -26,7 +31,7 @@ loop model = do
   hSetBuffering stdin LineBuffering
   putStrLn ""
   newModel <- update c model
-  if newModel == 0
+  if tick newModel == 0
     then putStrLn "Bye."
     else do
       persistModel newModel
@@ -38,9 +43,9 @@ persistModel model =
 
 update :: Char -> Model -> IO Model
 update c model
-  | c == 'u' = return (model + 1)
-  | c == 'd' = return (model - 1)
-  | c == 'q' = return 0
+  | c == 'u' = return (model {tick = tick model + 1})
+  | c == 'd' = return (model {tick = tick model - 1})
+  | c == 'q' = return (model {tick = 0})
   | otherwise = return model
 
 view :: Model -> IO ()
