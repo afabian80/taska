@@ -1,7 +1,8 @@
 module Main where
 
-import GHC.IO.Handle (BufferMode (LineBuffering, NoBuffering), hFlush, hSetBuffering)
-import GHC.IO.Handle.FD (stdin, stdout)
+import GHC.IO.Handle (BufferMode (LineBuffering, NoBuffering), hSetBuffering)
+import GHC.IO.Handle.FD (stdin)
+import System.Console.ANSI (clearScreen, setCursorPosition)
 
 type Model = Int
 
@@ -31,5 +32,7 @@ update c model
 
 view :: Model -> IO ()
 view model = do
+  clearScreen
+  setCursorPosition 0 0
   putStrLn ("The model is " ++ show model)
   putStrLn "'u' to up, 'd' to down, 'q' to quit. Value of 0 also quits."

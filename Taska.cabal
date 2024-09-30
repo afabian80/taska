@@ -11,6 +11,6 @@ common warnings
 executable Taska
     import:           warnings
     main-is:          Main.hs
-    build-depends:    base ^>=4.17.2.1
+    build-depends:    base ^>=4.17.2.1, ansi-terminal ^>=1.1
     hs-source-dirs:   app
     default-language: Haskell2010
