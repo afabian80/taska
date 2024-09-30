@@ -19,9 +19,17 @@ data Msg = Increment | Decrement | AddMode | Quit | Nop deriving (Show, Eq)
 dataFile :: FilePath
 dataFile = "taska.txt"
 
+initModel :: Model
+initModel =
+  Model
+    { tick = 0,
+      counter = 0,
+      addMode = False
+    }
+
 main :: IO ()
 main = do
-  databaseStr <- catchIOError (readFile dataFile) (\_ -> return (show Model {tick = 0, counter = 0, addMode = False}))
+  databaseStr <- catchIOError (readFile dataFile) (\_ -> return (show initModel))
   let db = readMaybe databaseStr :: Maybe Model
   case db of
     Nothing -> putStrLn "Corrupt database file."
