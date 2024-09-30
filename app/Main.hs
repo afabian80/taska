@@ -18,7 +18,7 @@ loop model = do
   hSetBuffering stdin LineBuffering
   putStrLn ""
   newModel <- update c model
-  if model == 0
+  if newModel == 0
     then putStrLn "Bye."
     else loop newModel
 
