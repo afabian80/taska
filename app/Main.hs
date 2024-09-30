@@ -1,28 +1,35 @@
 module Main where
 
-import GHC.IO.Handle (BufferMode (NoBuffering), hSetBuffering)
-import GHC.IO.Handle.FD (stdin)
+import GHC.IO.Handle (BufferMode (LineBuffering, NoBuffering), hFlush, hSetBuffering)
+import GHC.IO.Handle.FD (stdin, stdout)
+
+type Model = Int
 
 main :: IO ()
 main = do
-  hSetBuffering stdin NoBuffering
-  loop 1
+  let model = 1 :: Model
+  loop model
 
-loop :: Int -> IO ()
+loop :: Model -> IO ()
 loop model = do
-  -- printf "Model is %d\n" model
   view model
+  hSetBuffering stdin NoBuffering
   c <- getChar
+  hSetBuffering stdin LineBuffering
+  putStrLn ""
   newModel <- update c model
-  loop newModel
+  if model == 0
+    then putStrLn "Bye."
+    else loop newModel
 
--- main :: IO ()
--- main = do
---   putStrLn "Try typing and deleting!"
---   s <- getLine
---   printf "You typed %s\n" s
---   putStrLn "Try presisng a key!"
---   hSetBuffering stdin NoBuffering
---   c <- getChar
---   printf "You typed %c\n" c
---   putStrLn "Done."
+update :: Char -> Model -> IO Model
+update c model
+  | c == 'u' = return (model + 1)
+  | c == 'd' = return (model - 1)
+  | c == 'q' = return 0
+  | otherwise = return model
+
+view :: Model -> IO ()
+view model = do
+  putStrLn ("The model is " ++ show model)
+  putStrLn "'u' to up, 'd' to down, 'q' to quit. Value of 0 also quits."
