@@ -3,13 +3,20 @@ module Main where
 import GHC.IO.Handle (BufferMode (LineBuffering, NoBuffering), hSetBuffering)
 import GHC.IO.Handle.FD (stdin)
 import System.Console.ANSI (clearScreen, setCursorPosition)
+import Text.Read (readMaybe)
 
 type Model = Int
 
+dataFile :: FilePath
+dataFile = "taska.txt"
+
 main :: IO ()
 main = do
-  let model = 1 :: Model
-  loop model
+  databaseStr <- readFile dataFile
+  let db = readMaybe databaseStr
+  case db of
+    Just s -> loop s
+    _ -> putStrLn "Corrupt database file."
 
 loop :: Model -> IO ()
 loop model = do
@@ -21,7 +28,13 @@ loop model = do
   newModel <- update c model
   if newModel == 0
     then putStrLn "Bye."
-    else loop newModel
+    else do
+      persistModel newModel
+      loop newModel
+
+persistModel :: Model -> IO ()
+persistModel model =
+  writeFile dataFile (show model)
 
 update :: Char -> Model -> IO Model
 update c model
