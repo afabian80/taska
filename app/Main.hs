@@ -14,7 +14,7 @@ data Model
   }
   deriving (Show, Read)
 
-data Msg = Increment | Decrement | AddMode | Quit | Nop deriving (Show, Eq)
+data Msg = Increment | Decrement | NormalMode | AddMode | Quit | Nop deriving (Show, Eq)
 
 dataFile :: FilePath
 dataFile = "taska.txt"
@@ -65,6 +65,7 @@ toMsg c = case c of
   'u' -> Increment
   'd' -> Decrement
   'a' -> AddMode
+  '\ESC' -> NormalMode
   'q' -> Quit
   _ -> Nop
 
@@ -77,6 +78,7 @@ update msg model =
   case msg of
     Increment -> model {counter = counter model + 1}
     Decrement -> model {counter = counter model - 1}
+    NormalMode -> model {addMode = False}
     AddMode -> model {addMode = True}
     Quit -> model
     Nop -> model
