@@ -1,4 +1,4 @@
-module Main (main) where
+module Main (main, whatKey) where
 
 import GHC.IO.Handle (BufferMode (LineBuffering, NoBuffering), hSetBuffering)
 import GHC.IO.Handle.FD (stdin)
@@ -91,3 +91,40 @@ view model = do
   putStrLn ""
   putStrLn ""
   putStrLn "'u' to up, 'd' to down, 'q' to quit. Value of 0 also quits."
+
+whatKey :: IO ()
+whatKey = do
+  c1 <- getChar
+  putStrLn ""
+  if c1 == '\ESC'
+    then do
+      c2 <- getChar
+      if c2 == '['
+        then do
+          c3 <- getChar
+          case c3 of
+            'D' -> putStrLn "Left arrow"
+            'C' -> putStrLn "Right arrow"
+            'A' -> putStrLn "Up arrow"
+            'B' -> putStrLn "Down arrow"
+            '5' -> do
+              c4 <- getChar
+              case c4 of
+                '~' -> putStrLn "Page up"
+                _ -> putStrLn "Uknown c4 key"
+            '6' -> do
+              c4 <- getChar
+              case c4 of
+                '~' -> putStrLn "Page down"
+                _ -> putStrLn "Uknown c4 key"
+            'H' -> putStrLn "Home"
+            'F' -> putStrLn "End"
+            _ -> putStrLn "Unknown arrow key"
+          whatKey
+        else putStrLn "Unknown c2 key"
+    else
+      putStrLn $ "Key is " ++ show c1
+
+-- putStrLn ""
+-- let g = generalCategory c
+-- putStrLn ("Key category is " ++ show g)
