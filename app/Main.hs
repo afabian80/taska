@@ -132,6 +132,8 @@ readKey mode =
         'C' -> return KeyRight
         'A' -> return KeyUp
         'B' -> return KeyDown
+        'H' -> return KeyHome
+        'F' -> return KeyEnd
         '5' -> readKey (IMAwaitTilde '5')
         '6' -> readKey (IMAwaitTilde '6')
         _ -> return (KeyUnknown IMAwaitControl c)
@@ -139,7 +141,7 @@ readKey mode =
       c <- getChar
       case c of
         '~' -> case x of
-          '5' -> return KeyUp
-          '6' -> return KeyDown
+          '5' -> return KeyPgUp
+          '6' -> return KeyPgDown
           _ -> return (KeyUnknown (IMAwaitTilde x) c)
         _ -> return (KeyUnknown (IMAwaitTilde x) c)
