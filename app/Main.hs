@@ -14,14 +14,14 @@ data Model
   }
   deriving (Show, Read)
 
-data Msg = Increment | Decrement | NormalMode | AddMode | Quit | Nop deriving (Show, Eq)
+-- data Msg = Increment | Decrement | NormalMode | AddMode | Quit | Nop deriving (Show, Eq)
 
 data InputMode
   = IMNormal
   | IMAwaitBracket
   | IMAwaitTilde Char
   | IMAwaitControl
-  deriving (Show)
+  deriving (Show, Eq)
 
 data Key
   = KeyLeft
@@ -34,7 +34,7 @@ data Key
   | KeyEnd
   | Key Char
   | KeyUnknown InputMode Char
-  deriving (Show)
+  deriving (Show, Eq)
 
 dataFile :: FilePath
 dataFile = "taska.txt"
@@ -49,7 +49,7 @@ initModel =
 
 main :: IO ()
 main = do
-  databaseStr <- catchIOError (readFile dataFile) (\_ -> return (show initModel))
+  databaseStr <- catchIOError (readFile dataFile) (\_ -> return (show initModel)) -- ignore all errors and start a fresh database
   let db = readMaybe databaseStr :: Maybe Model
   case db of
     Nothing -> putStrLn "Corrupt database file."
@@ -58,50 +58,36 @@ main = do
 loop :: Model -> IO ()
 loop model = do
   view model
-  msg <- readMsg
-  if msg == Quit
+  hSetBuffering stdin NoBuffering -- so pressing Enter is not needed after character input
+  key <- readKey IMNormal
+  hSetBuffering stdin LineBuffering -- turn back the need for Enter and line buffering
+  if key == Key 'q'
     then do
       persistModel model
       putStrLn "Bye"
     else do
-      if msg == Nop
-        then do
-          loop model
-        else do
-          let newModel = update msg model
-          persistModel newModel
-          loop newModel {tick = tick newModel + 1}
-
-readMsg :: IO Msg
-readMsg = do
-  hSetBuffering stdin NoBuffering
-  c <- getChar
-  hSetBuffering stdin LineBuffering
-  putStrLn ""
-  return (toMsg c)
-
-toMsg :: Char -> Msg
-toMsg c = case c of
-  'u' -> Increment
-  'd' -> Decrement
-  'a' -> AddMode
-  '\ESC' -> NormalMode
-  'q' -> Quit
-  _ -> Nop
+      let newModel = update key model
+      persistModel newModel
+      loop newModel
 
 persistModel :: Model -> IO ()
 persistModel model =
   writeFile dataFile (show model)
 
-update :: Msg -> Model -> Model
-update msg model =
-  case msg of
-    Increment -> model {counter = counter model + 1}
-    Decrement -> model {counter = counter model - 1}
-    NormalMode -> model {addMode = False}
-    AddMode -> model {addMode = True}
-    Quit -> model
-    Nop -> model
+update :: Key -> Model -> Model
+update key model =
+  case key of
+    KeyUp ->
+      model
+        { counter = counter model + 1,
+          tick = tick model + 1
+        }
+    KeyDown ->
+      model
+        { counter = counter model - 1,
+          tick = tick model + 1
+        }
+    _ -> model
 
 view :: Model -> IO ()
 view model = do
@@ -110,7 +96,7 @@ view model = do
   putStrLn ("Current model is: " ++ show model)
   putStrLn ""
   putStrLn ""
-  putStrLn "'u' to up, 'd' to down, 'q' to quit. Value of 0 also quits."
+  putStrLn "'Up arrow' to increment, Down arrow' to decrement, 'q' to quit."
 
 readKey :: InputMode -> IO Key
 readKey mode =
@@ -118,8 +104,8 @@ readKey mode =
     IMNormal -> do
       c <- getChar
       case c of
-        '\ESC' -> readKey IMAwaitBracket
-        x -> return (Key x)
+        '\ESC' -> readKey IMAwaitBracket -- a series of key codes encode the key, we need to further process
+        x -> return (Key x) -- simples case for most keys
     IMAwaitBracket -> do
       c <- getChar
       case c of
