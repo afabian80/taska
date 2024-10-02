@@ -16,6 +16,13 @@ data Model
 
 data Msg = Increment | Decrement | NormalMode | AddMode | Quit | Nop deriving (Show, Eq)
 
+data InputMode
+  = IMNormal
+  | IMAwaitBracket
+  | IMAwaitTilde Char
+  | IMAwaitControl
+  deriving (Show)
+
 data Key
   = KeyLeft
   | KeyRight
@@ -26,7 +33,7 @@ data Key
   | KeyHome
   | KeyEnd
   | Key Char
-  | KeyUnknown Char
+  | KeyUnknown InputMode Char
   deriving (Show)
 
 dataFile :: FilePath
@@ -105,13 +112,6 @@ view model = do
   putStrLn ""
   putStrLn "'u' to up, 'd' to down, 'q' to quit. Value of 0 also quits."
 
-data InputMode
-  = IMNormal
-  | IMAwaitBracket
-  | IMAwaitTilde Char
-  | IMAwaitControl
-  deriving (Show)
-
 readKey :: InputMode -> IO Key
 readKey mode =
   case mode of
@@ -124,7 +124,7 @@ readKey mode =
       c <- getChar
       case c of
         '[' -> readKey IMAwaitControl
-        _ -> return (KeyUnknown c)
+        _ -> return (KeyUnknown IMAwaitBracket c)
     IMAwaitControl -> do
       c <- getChar
       case c of
@@ -134,12 +134,12 @@ readKey mode =
         'B' -> return KeyDown
         '5' -> readKey (IMAwaitTilde '5')
         '6' -> readKey (IMAwaitTilde '6')
-        _ -> return (KeyUnknown c)
+        _ -> return (KeyUnknown IMAwaitControl c)
     IMAwaitTilde x -> do
       c <- getChar
       case c of
         '~' -> case x of
           '5' -> return KeyUp
           '6' -> return KeyDown
-          _ -> return (KeyUnknown c)
-        _ -> return (KeyUnknown c)
+          _ -> return (KeyUnknown (IMAwaitTilde x) c)
+        _ -> return (KeyUnknown (IMAwaitTilde x) c)
