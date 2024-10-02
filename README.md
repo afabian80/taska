@@ -1,0 +1,1 @@
+Task manager in Haskell. My main goal is to add timestamp (kind of) to the tasks, and be able to highlight the tasks that have changed since another timestamp. This is useful for an online scrum daily meeting to highligh what I should talk about.
