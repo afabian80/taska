@@ -7,7 +7,7 @@ module Main (main, readKey) where
 
 import GHC.IO.Handle (BufferMode (LineBuffering, NoBuffering), hSetBuffering)
 import GHC.IO.Handle.FD (stdin)
-import System.Console.ANSI (clearScreen, setCursorPosition)
+import System.Console.ANSI (clearScreen, setCursorPosition) -- this is an external library
 import System.IO.Error (catchIOError)
 import Text.Read (readMaybe)
 
@@ -158,12 +158,12 @@ readKey mode =
     IMAwaitControl -> do
       c <- getChar
       case c of
-        'D' -> return KeyLeft
-        'C' -> return KeyRight
         'A' -> return KeyUp
         'B' -> return KeyDown
-        'H' -> return KeyHome
+        'C' -> return KeyRight
+        'D' -> return KeyLeft
         'F' -> return KeyEnd
+        'H' -> return KeyHome
         '5' -> readKey (IMAwaitTilde '5')
         '6' -> readKey (IMAwaitTilde '6')
         _ -> return (KeyUnknown IMAwaitControl c)
