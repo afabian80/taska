@@ -129,10 +129,12 @@ view model = do
     NormalScreen -> do
       clearScreen
       setCursorPosition 0 0
+      putStrLn "Tasks:"
+      mapM_ print (tasks model)
+      putStrLn ""
+      putStrLn "Keys: up, down, a and q."
+      putStrLn ""
       putStrLn ("Current model is: " ++ show model)
-      putStrLn ""
-      putStrLn ""
-      putStrLn "'Up arrow' to increment, Down arrow' to decrement, 'q' to quit."
       return (CommandMsg Nop)
     AddTaskScreen -> do
       clearScreen
