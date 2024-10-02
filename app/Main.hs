@@ -32,6 +32,7 @@ data Key
   | KeyPgDown
   | KeyHome
   | KeyEnd
+  | KeyEsc
   | Key Char
   | KeyUnknown InputMode Char
   deriving (Show, Eq)
@@ -89,6 +90,11 @@ update key model =
         { counter = counter model - 1,
           tick = tick model + 1
         }
+    KeyEsc ->
+      model
+        { counter = 0,
+          tick = tick model + 1
+        }
     KeyUnknown mode c -> model {logs = newLog : logs model}
       where
         newLog = "Unknown character " ++ show c ++ " in " ++ show mode ++ " mode."
@@ -115,6 +121,7 @@ readKey mode =
       c <- getChar
       case c of
         '[' -> readKey IMAwaitControl
+        '\ESC' -> return KeyEsc
         _ -> return (KeyUnknown IMAwaitBracket c)
     IMAwaitControl -> do
       c <- getChar
