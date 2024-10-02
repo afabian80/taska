@@ -1,3 +1,8 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Use newtype instead of data" #-}
+{-# HLINT ignore "Use <$>" #-}
+
 module Main (main, readKey) where
 
 import GHC.IO.Handle (BufferMode (LineBuffering, NoBuffering), hSetBuffering)
@@ -46,6 +51,10 @@ data Key
 dataFile :: FilePath
 dataFile = "taska.txt"
 
+data Command = Nop | AddTask String deriving (Show, Eq)
+
+data Msg = KeyMsg Key | CommandMsg Command deriving (Show, Eq)
+
 initModel :: Model
 initModel =
   Model
@@ -68,16 +77,22 @@ main = do
 
 loop :: Model -> IO ()
 loop model = do
-  view model
-  hSetBuffering stdin NoBuffering -- so pressing Enter is not needed after character input
-  key <- readKey IMNormal
-  hSetBuffering stdin LineBuffering -- turn back the need for Enter and line buffering
-  if key == Key 'q'
+  msg <- view model
+  if msg == CommandMsg Nop
     then do
-      persistModel model
-      putStrLn "Bye"
+      hSetBuffering stdin NoBuffering -- so pressing Enter is not needed after character input
+      key <- readKey IMNormal
+      hSetBuffering stdin LineBuffering -- turn back the need for Enter and line buffering
+      if key == Key 'q'
+        then do
+          persistModel model
+          putStrLn "Bye"
+        else do
+          let newModel = update (KeyMsg key) model
+          persistModel newModel
+          loop newModel
     else do
-      let newModel = update key model
+      let newModel = update msg model
       persistModel newModel
       loop newModel
 
@@ -85,29 +100,30 @@ persistModel :: Model -> IO ()
 persistModel model =
   writeFile dataFile (show model)
 
-update :: Key -> Model -> Model
-update key model =
-  case key of
-    KeyUp ->
-      model
-        { counter = counter model + 1,
-          tick = tick model + 1
-        }
-    KeyDown ->
-      model
-        { counter = counter model - 1,
-          tick = tick model + 1
-        }
-    KeyEsc ->
-      model {screen = NormalScreen}
-    Key 'a' ->
-      model {screen = AddTaskScreen}
-    KeyUnknown mode c -> model {logs = newLog : logs model}
-      where
-        newLog = "Unknown character " ++ show c ++ " in " ++ show mode ++ " mode."
-    _ -> model
+update :: Msg -> Model -> Model
+update msg model =
+  case msg of
+    KeyMsg key ->
+      case key of
+        KeyUp -> model {counter = counter model + 1}
+        KeyDown -> model {counter = counter model - 1}
+        KeyEsc -> model {screen = NormalScreen}
+        Key 'a' -> model {screen = AddTaskScreen}
+        KeyUnknown mode c -> model {logs = newLog : logs model}
+          where
+            newLog = "Unknown character " ++ show c ++ " in " ++ show mode ++ " mode."
+        _ -> model
+    CommandMsg command ->
+      case command of
+        AddTask s ->
+          model
+            { tasks = tasks model ++ [Task s],
+              screen = NormalScreen,
+              tick = tick model + 1
+            }
+        _ -> model
 
-view :: Model -> IO ()
+view :: Model -> IO Msg
 view model = do
   case screen model of
     NormalScreen -> do
@@ -117,10 +133,13 @@ view model = do
       putStrLn ""
       putStrLn ""
       putStrLn "'Up arrow' to increment, Down arrow' to decrement, 'q' to quit."
+      return (CommandMsg Nop)
     AddTaskScreen -> do
       clearScreen
       setCursorPosition 0 0
-      putStrLn "AddTaskScreen is not implemented!"
+      putStrLn "New task: "
+      text <- getLine
+      return (CommandMsg (AddTask text))
 
 readKey :: InputMode -> IO Key
 readKey mode =
