@@ -6,15 +6,21 @@ import System.Console.ANSI (clearScreen, setCursorPosition)
 import System.IO.Error (catchIOError)
 import Text.Read (readMaybe)
 
+newtype Task
+  = Task {title :: String}
+  deriving (Show, Read, Eq)
+
+data Screen = NormalScreen | AddTaskScreen deriving (Show, Eq, Read)
+
 data Model
   = Model
   { tick :: Int,
     counter :: Int,
-    logs :: [String]
+    logs :: [String],
+    tasks :: [Task],
+    screen :: Screen
   }
   deriving (Show, Read)
-
--- data Msg = Increment | Decrement | NormalMode | AddMode | Quit | Nop deriving (Show, Eq)
 
 data InputMode
   = IMNormal
@@ -45,7 +51,9 @@ initModel =
   Model
     { tick = 0,
       counter = 0,
-      logs = []
+      logs = [],
+      tasks = [],
+      screen = NormalScreen
     }
 
 main :: IO ()
@@ -53,7 +61,7 @@ main = do
   databaseStr <- catchIOError (readFile dataFile) (\_ -> return (show initModel)) -- ignore all errors and start a fresh database
   let maybeModel = readMaybe databaseStr :: Maybe Model
   case maybeModel of
-    Nothing -> putStrLn "Corrupt database file."
+    Nothing -> putStrLn ("Corrupt database file. Delete " ++ dataFile ++ " to start a new database on model change.")
     Just model -> do
       let newModel = model {logs = []} -- clean logs when loading model database
       loop newModel
@@ -91,10 +99,9 @@ update key model =
           tick = tick model + 1
         }
     KeyEsc ->
-      model
-        { counter = 0,
-          tick = tick model + 1
-        }
+      model {screen = NormalScreen}
+    Key 'a' ->
+      model {screen = AddTaskScreen}
     KeyUnknown mode c -> model {logs = newLog : logs model}
       where
         newLog = "Unknown character " ++ show c ++ " in " ++ show mode ++ " mode."
@@ -102,12 +109,18 @@ update key model =
 
 view :: Model -> IO ()
 view model = do
-  clearScreen
-  setCursorPosition 0 0
-  putStrLn ("Current model is: " ++ show model)
-  putStrLn ""
-  putStrLn ""
-  putStrLn "'Up arrow' to increment, Down arrow' to decrement, 'q' to quit."
+  case screen model of
+    NormalScreen -> do
+      clearScreen
+      setCursorPosition 0 0
+      putStrLn ("Current model is: " ++ show model)
+      putStrLn ""
+      putStrLn ""
+      putStrLn "'Up arrow' to increment, Down arrow' to decrement, 'q' to quit."
+    AddTaskScreen -> do
+      clearScreen
+      setCursorPosition 0 0
+      putStrLn "AddTaskScreen is not implemented!"
 
 readKey :: InputMode -> IO Key
 readKey mode =
