@@ -1,4 +1,4 @@
-module Main (main, whatKey) where
+module Main (main, readKey) where
 
 import GHC.IO.Handle (BufferMode (LineBuffering, NoBuffering), hSetBuffering)
 import GHC.IO.Handle.FD (stdin)
@@ -15,6 +15,19 @@ data Model
   deriving (Show, Read)
 
 data Msg = Increment | Decrement | NormalMode | AddMode | Quit | Nop deriving (Show, Eq)
+
+data Key
+  = KeyLeft
+  | KeyRight
+  | KeyUp
+  | KeyDown
+  | KeyPgUp
+  | KeyPgDown
+  | KeyHome
+  | KeyEnd
+  | Key Char
+  | KeyUnknown Char
+  deriving (Show)
 
 dataFile :: FilePath
 dataFile = "taska.txt"
@@ -92,39 +105,41 @@ view model = do
   putStrLn ""
   putStrLn "'u' to up, 'd' to down, 'q' to quit. Value of 0 also quits."
 
-whatKey :: IO ()
-whatKey = do
-  c1 <- getChar
-  putStrLn ""
-  if c1 == '\ESC'
-    then do
-      c2 <- getChar
-      if c2 == '['
-        then do
-          c3 <- getChar
-          case c3 of
-            'D' -> putStrLn "Left arrow"
-            'C' -> putStrLn "Right arrow"
-            'A' -> putStrLn "Up arrow"
-            'B' -> putStrLn "Down arrow"
-            '5' -> do
-              c4 <- getChar
-              case c4 of
-                '~' -> putStrLn "Page up"
-                _ -> putStrLn "Uknown c4 key"
-            '6' -> do
-              c4 <- getChar
-              case c4 of
-                '~' -> putStrLn "Page down"
-                _ -> putStrLn "Uknown c4 key"
-            'H' -> putStrLn "Home"
-            'F' -> putStrLn "End"
-            _ -> putStrLn "Unknown arrow key"
-          whatKey
-        else putStrLn "Unknown c2 key"
-    else
-      putStrLn $ "Key is " ++ show c1
+data InputMode
+  = IMNormal
+  | IMAwaitBracket
+  | IMAwaitTilde Char
+  | IMAwaitControl
+  deriving (Show)
 
--- putStrLn ""
--- let g = generalCategory c
--- putStrLn ("Key category is " ++ show g)
+readKey :: InputMode -> IO Key
+readKey mode =
+  case mode of
+    IMNormal -> do
+      c <- getChar
+      case c of
+        '\ESC' -> readKey IMAwaitBracket
+        x -> return (Key x)
+    IMAwaitBracket -> do
+      c <- getChar
+      case c of
+        '[' -> readKey IMAwaitControl
+        _ -> return (KeyUnknown c)
+    IMAwaitControl -> do
+      c <- getChar
+      case c of
+        'D' -> return KeyLeft
+        'C' -> return KeyRight
+        'A' -> return KeyUp
+        'B' -> return KeyDown
+        '5' -> readKey (IMAwaitTilde '5')
+        '6' -> readKey (IMAwaitTilde '6')
+        _ -> return (KeyUnknown c)
+    IMAwaitTilde x -> do
+      c <- getChar
+      case c of
+        '~' -> case x of
+          '5' -> return KeyUp
+          '6' -> return KeyDown
+          _ -> return (KeyUnknown c)
+        _ -> return (KeyUnknown c)
