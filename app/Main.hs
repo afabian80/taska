@@ -10,7 +10,7 @@ data Model
   = Model
   { tick :: Int,
     counter :: Int,
-    addMode :: Bool
+    logs :: [String]
   }
   deriving (Show, Read)
 
@@ -44,16 +44,18 @@ initModel =
   Model
     { tick = 0,
       counter = 0,
-      addMode = False
+      logs = []
     }
 
 main :: IO ()
 main = do
   databaseStr <- catchIOError (readFile dataFile) (\_ -> return (show initModel)) -- ignore all errors and start a fresh database
-  let db = readMaybe databaseStr :: Maybe Model
-  case db of
+  let maybeModel = readMaybe databaseStr :: Maybe Model
+  case maybeModel of
     Nothing -> putStrLn "Corrupt database file."
-    Just s -> loop s
+    Just model -> do
+      let newModel = model {logs = []} -- clean logs when loading model database
+      loop newModel
 
 loop :: Model -> IO ()
 loop model = do
@@ -87,6 +89,9 @@ update key model =
         { counter = counter model - 1,
           tick = tick model + 1
         }
+    KeyUnknown mode c -> model {logs = newLog : logs model}
+      where
+        newLog = "Unknown character " ++ show c ++ " in " ++ show mode ++ " mode."
     _ -> model
 
 view :: Model -> IO ()
