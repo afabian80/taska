@@ -15,7 +15,8 @@ import Text.Read (readMaybe)
 data Task
   = Task
   { title :: String,
-    active :: Bool
+    active :: Bool,
+    lastTick :: Int
   }
   deriving (Show, Read, Eq)
 
@@ -131,7 +132,7 @@ update msg model =
       case command of
         AddTask s ->
           model
-            { tasks = V.snoc (tasks model) (Task s False),
+            { tasks = V.snoc (tasks model) (Task s False (tick model)),
               screen = NormalScreen,
               tick = tick model + 1,
               index = Just 0
@@ -167,9 +168,9 @@ printTask :: Task -> IO ()
 printTask t =
   if active t
     then
-      putStrLn ("> " ++ title t)
+      putStrLn ("> " ++ title t ++ " (" ++ show (lastTick t) ++ ")")
     else
-      putStrLn ("  " ++ title t)
+      putStrLn ("  " ++ title t ++ " (" ++ show (lastTick t) ++ ")")
 
 addCursor :: V.Vector Task -> Maybe Int -> V.Vector Task
 addCursor vec Nothing = vec
