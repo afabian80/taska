@@ -12,11 +12,19 @@ import System.Console.ANSI (clearScreen, setCursorPosition)
 import System.IO.Error (catchIOError)
 import Text.Read (readMaybe)
 
+data TaskState
+  = Todo
+  | Started
+  | Stopped
+  | Done
+  deriving (Show, Eq, Read)
+
 data Task
   = Task
   { title :: String,
     active :: Bool,
-    lastTick :: Int
+    lastTick :: Int,
+    state :: TaskState
   }
   deriving (Show, Read, Eq)
 
@@ -127,6 +135,7 @@ update msg model =
         KeyEsc -> model {screen = NormalScreen}
         Key 'a' -> model {screen = AddTaskScreen}
         Key 'u' -> model {compareTick = tick model}
+        Key ' ' -> model {tasks = markDone (tasks model) (index model)}
         KeyUnknown mode c -> model {logs = newLog : logs model}
           where
             newLog = "Unknown character " ++ show c ++ " in " ++ show mode ++ " mode."
@@ -135,12 +144,19 @@ update msg model =
       case command of
         AddTask s ->
           model
-            { tasks = V.snoc (tasks model) (Task s False (tick model)),
+            { tasks = V.snoc (tasks model) (Task s False (tick model) Todo),
               screen = NormalScreen,
               tick = tick model + 1,
               index = Just 0
             }
         _ -> model
+
+markDone :: V.Vector Task -> Maybe Int -> V.Vector Task
+markDone ts Nothing = ts
+markDone ts (Just i) =
+  case (V.!?) ts i of
+    Nothing -> ts
+    (Just t) -> V.update ts (V.singleton (i, t {state = Done}))
 
 view :: Model -> IO Msg
 view model = do
@@ -152,7 +168,7 @@ view model = do
       let tasksWithCursor = addCursor (tasks model) (index model)
       render tasksWithCursor (compareTick model)
       putStrLn ""
-      putStrLn "Keys: select (up, down), add (a), update_time (u), quit (q)."
+      putStrLn "Keys: select (up, down), add (a), update_time (u), done (d), quit (q)."
       putStrLn ""
       putStrLn ("Current model is: " ++ show model)
       putStrLn ("Compare tick: " ++ show (compareTick model))
@@ -172,12 +188,21 @@ printTask :: Int -> Task -> IO ()
 printTask time task =
   if active task
     then
-      putStrLn ("> [ ]" ++ showNew ++ title task ++ showTick)
+      putStrLn ("> [ ]" ++ showNew ++ showState ++ title task ++ showTick)
     else
-      putStrLn ("  [ ]" ++ showNew ++ title task ++ showTick)
+      putStrLn ("  [ ]" ++ showNew ++ showState ++ title task ++ showTick)
   where
     showTick = " (" ++ show (lastTick task) ++ ")"
     showNew = if lastTick task >= time then " * " else "   "
+    showStateAux =
+      case state task of
+        Todo -> "TODO"
+        Started -> "START"
+        Stopped -> "STOP"
+        Done -> "DONE"
+    showState = showStateAux ++ " "
+
+-- use thses for start and stop: ⏵⏸
 
 addCursor :: V.Vector Task -> Maybe Int -> V.Vector Task
 addCursor vec Nothing = vec
