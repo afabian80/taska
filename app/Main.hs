@@ -146,7 +146,7 @@ view model = do
       setCursorPosition 0 0
       putStrLn "Tasks:"
       let tasksWithCursor = addCursor (tasks model) (index model)
-      mapM_ print tasksWithCursor
+      render tasksWithCursor
       putStrLn ""
       putStrLn "Keys: up, down, a and q."
       putStrLn ""
@@ -158,6 +158,18 @@ view model = do
       putStrLn "New task: "
       text <- getLine
       return (CommandMsg (AddTask text))
+
+render :: V.Vector Task -> IO ()
+render ts = do
+  mapM_ printTask ts
+
+printTask :: Task -> IO ()
+printTask t =
+  if active t
+    then
+      putStrLn ("> " ++ title t)
+    else
+      putStrLn ("  " ++ title t)
 
 addCursor :: V.Vector Task -> Maybe Int -> V.Vector Task
 addCursor vec Nothing = vec
