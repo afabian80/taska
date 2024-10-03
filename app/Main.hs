@@ -152,7 +152,7 @@ view model = do
       let tasksWithCursor = addCursor (tasks model) (index model)
       render tasksWithCursor (compareTick model)
       putStrLn ""
-      putStrLn "Keys: up, down, a and q."
+      putStrLn "Keys: select (up, down), add (a), update_time (u), quit (q)."
       putStrLn ""
       putStrLn ("Current model is: " ++ show model)
       putStrLn ("Compare tick: " ++ show (compareTick model))
