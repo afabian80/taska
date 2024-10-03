@@ -5,9 +5,10 @@
 
 module Main (main, readKey) where
 
+import Data.Vector (Vector, empty, snoc)
 import GHC.IO.Handle (BufferMode (LineBuffering, NoBuffering), hSetBuffering)
 import GHC.IO.Handle.FD (stdin)
-import System.Console.ANSI (clearScreen, setCursorPosition) -- this is an external library
+import System.Console.ANSI (clearScreen, setCursorPosition)
 import System.IO.Error (catchIOError)
 import Text.Read (readMaybe)
 
@@ -22,7 +23,7 @@ data Model
   { tick :: Int,
     counter :: Int,
     logs :: [String],
-    tasks :: [Task],
+    tasks :: Vector Task,
     screen :: Screen
   }
   deriving (Show, Read)
@@ -61,7 +62,7 @@ initModel =
     { tick = 0,
       counter = 0,
       logs = [],
-      tasks = [],
+      tasks = empty,
       screen = NormalScreen
     }
 
@@ -117,7 +118,7 @@ update msg model =
       case command of
         AddTask s ->
           model
-            { tasks = tasks model ++ [Task s],
+            { tasks = snoc (tasks model) (Task s),
               screen = NormalScreen,
               tick = tick model + 1
             }
