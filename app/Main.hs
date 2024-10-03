@@ -60,7 +60,7 @@ initModel :: Model
 initModel =
   Model
     { tick = 0,
-      index = Just 1,
+      index = Nothing,
       logs = [],
       tasks = empty,
       screen = NormalScreen
@@ -108,10 +108,16 @@ update msg model =
       case key of
         KeyUp -> model {index = newIndex}
           where
-            newIndex = fmap pred (index model)
+            newIndex =
+              fmap
+                (\x -> max 0 (x - 1))
+                (index model)
         KeyDown -> model {index = newIndex}
           where
-            newIndex = fmap succ (index model)
+            newIndex =
+              fmap
+                (\x -> min (length (tasks model) - 1) (x + 1))
+                (index model)
         KeyEsc -> model {screen = NormalScreen}
         Key 'a' -> model {screen = AddTaskScreen}
         KeyUnknown mode c -> model {logs = newLog : logs model}
@@ -124,7 +130,8 @@ update msg model =
           model
             { tasks = snoc (tasks model) (Task s),
               screen = NormalScreen,
-              tick = tick model + 1
+              tick = tick model + 1,
+              index = Just 0
             }
         _ -> model
 
