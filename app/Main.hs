@@ -150,7 +150,7 @@ view model = do
       setCursorPosition 0 0
       putStrLn "Tasks:"
       let tasksWithCursor = addCursor (tasks model) (index model)
-      render tasksWithCursor
+      render tasksWithCursor (compareTick model)
       putStrLn ""
       putStrLn "Keys: up, down, a and q."
       putStrLn ""
@@ -164,17 +164,20 @@ view model = do
       text <- getLine
       return (CommandMsg (AddTask text))
 
-render :: V.Vector Task -> IO ()
-render ts = do
-  mapM_ printTask ts
+render :: V.Vector Task -> Int -> IO ()
+render ts time = do
+  mapM_ (printTask time) ts
 
-printTask :: Task -> IO ()
-printTask t =
-  if active t
+printTask :: Int -> Task -> IO ()
+printTask time task =
+  if active task
     then
-      putStrLn ("> " ++ title t ++ " (" ++ show (lastTick t) ++ ")")
+      putStrLn ("> [ ]" ++ showNew ++ title task ++ showTick)
     else
-      putStrLn ("  " ++ title t ++ " (" ++ show (lastTick t) ++ ")")
+      putStrLn ("  [ ]" ++ showNew ++ title task ++ showTick)
+  where
+    showTick = " (" ++ show (lastTick task) ++ ")"
+    showNew = if lastTick task >= time then " * " else "   "
 
 addCursor :: V.Vector Task -> Maybe Int -> V.Vector Task
 addCursor vec Nothing = vec
