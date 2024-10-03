@@ -21,7 +21,7 @@ data Screen = NormalScreen | AddTaskScreen deriving (Show, Eq, Read)
 data Model
   = Model
   { tick :: Int,
-    counter :: Int,
+    index :: Maybe Int,
     logs :: [String],
     tasks :: Vector Task,
     screen :: Screen
@@ -60,7 +60,7 @@ initModel :: Model
 initModel =
   Model
     { tick = 0,
-      counter = 0,
+      index = Just 1,
       logs = [],
       tasks = empty,
       screen = NormalScreen
@@ -106,8 +106,12 @@ update msg model =
   case msg of
     KeyMsg key ->
       case key of
-        KeyUp -> model {counter = counter model + 1}
-        KeyDown -> model {counter = counter model - 1}
+        KeyUp -> model {index = newIndex}
+          where
+            newIndex = fmap pred (index model)
+        KeyDown -> model {index = newIndex}
+          where
+            newIndex = fmap succ (index model)
         KeyEsc -> model {screen = NormalScreen}
         Key 'a' -> model {screen = AddTaskScreen}
         KeyUnknown mode c -> model {logs = newLog : logs model}
