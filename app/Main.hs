@@ -135,9 +135,21 @@ update msg model =
         KeyEsc -> model {screen = NormalScreen}
         Key 'a' -> model {screen = AddTaskScreen}
         Key 'u' -> model {compareTick = tick model}
-        Key ' ' -> model {tasks = markDone (tasks model) (index model)}
-        Key 't' -> model {tasks = markTodo (tasks model) (index model)}
-        Key 's' -> model {tasks = markStartStop (tasks model) (index model)}
+        Key ' ' ->
+          model
+            { tasks = markDone (tasks model) (index model) (tick model),
+              tick = tick model + 1
+            }
+        Key 't' ->
+          model
+            { tasks = markTodo (tasks model) (index model) (tick model),
+              tick = tick model + 1
+            }
+        Key 's' ->
+          model
+            { tasks = markStartStop (tasks model) (index model) (tick model),
+              tick = tick model + 1
+            }
         KeyUnknown mode c -> model {logs = newLog : logs model}
           where
             newLog = "Unknown character " ++ show c ++ " in " ++ show mode ++ " mode."
@@ -153,30 +165,30 @@ update msg model =
             }
         _ -> model
 
-markDone :: V.Vector Task -> Maybe Int -> V.Vector Task
+markDone :: V.Vector Task -> Maybe Int -> Int -> V.Vector Task
 markDone = markState Done
 
-markTodo :: V.Vector Task -> Maybe Int -> V.Vector Task
+markTodo :: V.Vector Task -> Maybe Int -> Int -> V.Vector Task
 markTodo = markState Todo
 
-markStartStop :: V.Vector Task -> Maybe Int -> V.Vector Task
-markStartStop ts Nothing = ts
-markStartStop ts (Just i) =
+markStartStop :: V.Vector Task -> Maybe Int -> Int -> V.Vector Task
+markStartStop ts Nothing _ = ts
+markStartStop ts (Just i) time =
   case (V.!?) ts i of
     Nothing -> ts
-    (Just t) -> V.update ts (V.singleton (i, t {state = newState (state t)}))
+    (Just t) -> V.update ts (V.singleton (i, t {state = newState (state t), lastTick = time}))
   where
     newState Todo = Started
     newState Started = Stopped
     newState Stopped = Started
     newState Done = Done -- explicit Todo state is needed via different key
 
-markState :: TaskState -> V.Vector Task -> Maybe Int -> V.Vector Task
-markState _ ts Nothing = ts
-markState st ts (Just i) =
+markState :: TaskState -> V.Vector Task -> Maybe Int -> Int -> V.Vector Task
+markState _ ts Nothing _ = ts
+markState st ts (Just i) time =
   case (V.!?) ts i of
     Nothing -> ts
-    (Just t) -> V.update ts (V.singleton (i, t {state = st}))
+    (Just t) -> V.update ts (V.singleton (i, t {state = st, lastTick = time}))
 
 view :: Model -> IO Msg
 view model = do
@@ -188,10 +200,9 @@ view model = do
       let tasksWithCursor = addCursor (tasks model) (index model)
       render tasksWithCursor (compareTick model)
       putStrLn ""
-      putStrLn "Keys: select (up, down), add (a), update_time (u), done (d), todo (t), quit (q)."
+      putStrLn "Keys: select (up, down), add (a), update_time (u), done (d), todo (t), start/stop (s), quit (q)."
       putStrLn ""
       putStrLn ("Current model is: " ++ show model)
-      putStrLn ("Compare tick: " ++ show (compareTick model))
       return (CommandMsg Nop)
     AddTaskScreen -> do
       clearScreen
