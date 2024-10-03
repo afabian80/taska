@@ -12,8 +12,11 @@ import System.Console.ANSI (clearScreen, setCursorPosition)
 import System.IO.Error (catchIOError)
 import Text.Read (readMaybe)
 
-newtype Task
-  = Task {title :: String}
+data Task
+  = Task
+  { title :: String,
+    active :: Bool
+  }
   deriving (Show, Read, Eq)
 
 data Screen = NormalScreen | AddTaskScreen deriving (Show, Eq, Read)
@@ -128,7 +131,7 @@ update msg model =
       case command of
         AddTask s ->
           model
-            { tasks = V.snoc (tasks model) (Task s),
+            { tasks = V.snoc (tasks model) (Task s False),
               screen = NormalScreen,
               tick = tick model + 1,
               index = Just 0
@@ -161,7 +164,7 @@ addCursor vec Nothing = vec
 addCursor vec (Just i) =
   case (V.!?) vec i of
     Nothing -> vec
-    Just t -> V.update vec (V.singleton (i, t {title = "***"}))
+    Just t -> V.update vec (V.singleton (i, t {active = True}))
 
 readKey :: InputMode -> IO Key
 readKey mode =
