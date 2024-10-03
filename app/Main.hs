@@ -136,6 +136,7 @@ update msg model =
         Key 'a' -> model {screen = AddTaskScreen}
         Key 'u' -> model {compareTick = tick model}
         Key ' ' -> model {tasks = markDone (tasks model) (index model)}
+        Key 't' -> model {tasks = markTodo (tasks model) (index model)}
         KeyUnknown mode c -> model {logs = newLog : logs model}
           where
             newLog = "Unknown character " ++ show c ++ " in " ++ show mode ++ " mode."
@@ -152,11 +153,17 @@ update msg model =
         _ -> model
 
 markDone :: V.Vector Task -> Maybe Int -> V.Vector Task
-markDone ts Nothing = ts
-markDone ts (Just i) =
+markDone = markState Done
+
+markTodo :: V.Vector Task -> Maybe Int -> V.Vector Task
+markTodo = markState Todo
+
+markState :: TaskState -> V.Vector Task -> Maybe Int -> V.Vector Task
+markState _ ts Nothing = ts
+markState st ts (Just i) =
   case (V.!?) ts i of
     Nothing -> ts
-    (Just t) -> V.update ts (V.singleton (i, t {state = Done}))
+    (Just t) -> V.update ts (V.singleton (i, t {state = st}))
 
 view :: Model -> IO Msg
 view model = do
@@ -168,7 +175,7 @@ view model = do
       let tasksWithCursor = addCursor (tasks model) (index model)
       render tasksWithCursor (compareTick model)
       putStrLn ""
-      putStrLn "Keys: select (up, down), add (a), update_time (u), done (d), quit (q)."
+      putStrLn "Keys: select (up, down), add (a), update_time (u), done (d), todo (t), quit (q)."
       putStrLn ""
       putStrLn ("Current model is: " ++ show model)
       putStrLn ("Compare tick: " ++ show (compareTick model))
