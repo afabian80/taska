@@ -157,8 +157,11 @@ view model = do
       return (CommandMsg (AddTask text))
 
 addCursor :: V.Vector Task -> Maybe Int -> V.Vector Task
-addCursor v Nothing = v
-addCursor v (Just i) = undefined -- I need to modify the task at given index
+addCursor vec Nothing = vec
+addCursor vec (Just i) =
+  case (V.!?) vec i of
+    Nothing -> vec
+    Just t -> V.update vec (V.singleton (i, t {title = "***"}))
 
 readKey :: InputMode -> IO Key
 readKey mode =
