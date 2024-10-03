@@ -5,7 +5,7 @@
 
 module Main (main, readKey) where
 
-import Data.Vector (Vector, empty, snoc)
+import qualified Data.Vector as V
 import GHC.IO.Handle (BufferMode (LineBuffering, NoBuffering), hSetBuffering)
 import GHC.IO.Handle.FD (stdin)
 import System.Console.ANSI (clearScreen, setCursorPosition)
@@ -23,7 +23,7 @@ data Model
   { tick :: Int,
     index :: Maybe Int,
     logs :: [String],
-    tasks :: Vector Task,
+    tasks :: V.Vector Task,
     screen :: Screen
   }
   deriving (Show, Read)
@@ -62,7 +62,7 @@ initModel =
     { tick = 0,
       index = Nothing,
       logs = [],
-      tasks = empty,
+      tasks = V.empty,
       screen = NormalScreen
     }
 
@@ -128,7 +128,7 @@ update msg model =
       case command of
         AddTask s ->
           model
-            { tasks = snoc (tasks model) (Task s),
+            { tasks = V.snoc (tasks model) (Task s),
               screen = NormalScreen,
               tick = tick model + 1,
               index = Just 0
@@ -142,7 +142,8 @@ view model = do
       clearScreen
       setCursorPosition 0 0
       putStrLn "Tasks:"
-      mapM_ print (tasks model)
+      let tasksWithCursor = addCursor (tasks model) (index model)
+      mapM_ print tasksWithCursor
       putStrLn ""
       putStrLn "Keys: up, down, a and q."
       putStrLn ""
@@ -154,6 +155,10 @@ view model = do
       putStrLn "New task: "
       text <- getLine
       return (CommandMsg (AddTask text))
+
+addCursor :: V.Vector Task -> Maybe Int -> V.Vector Task
+addCursor v Nothing = v
+addCursor v (Just i) = undefined -- I need to modify the task at given index
 
 readKey :: InputMode -> IO Key
 readKey mode =
