@@ -188,21 +188,19 @@ printTask :: Int -> Task -> IO ()
 printTask time task =
   if active task
     then
-      putStrLn ("> [ ]" ++ showNew ++ showState ++ title task ++ showTick)
+      putStrLn (showNew ++ ">" ++ showState ++ title task ++ showTick)
     else
-      putStrLn ("  [ ]" ++ showNew ++ showState ++ title task ++ showTick)
+      putStrLn (showNew ++ " " ++ showState ++ title task ++ showTick)
   where
     showTick = " (" ++ show (lastTick task) ++ ")"
     showNew = if lastTick task >= time then " * " else "   "
     showStateAux =
       case state task of
-        Todo -> "TODO"
-        Started -> "START"
-        Stopped -> "STOP"
-        Done -> "DONE"
-    showState = showStateAux ++ " "
-
--- use thses for start and stop: ⏵⏸
+        Todo -> "[ ]"
+        Started -> "[S]"
+        Stopped -> "[T]"
+        Done -> "[X]"
+    showState = " " ++ showStateAux ++ " "
 
 addCursor :: V.Vector Task -> Maybe Int -> V.Vector Task
 addCursor vec Nothing = vec
