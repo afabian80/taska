@@ -28,7 +28,8 @@ data Model
     index :: Maybe Int,
     logs :: [String],
     tasks :: V.Vector Task,
-    screen :: Screen
+    screen :: Screen,
+    compareTick :: Int
   }
   deriving (Show, Read)
 
@@ -67,7 +68,8 @@ initModel =
       index = Nothing,
       logs = [],
       tasks = V.empty,
-      screen = NormalScreen
+      screen = NormalScreen,
+      compareTick = 0
     }
 
 main :: IO ()
@@ -124,6 +126,7 @@ update msg model =
                 (index model)
         KeyEsc -> model {screen = NormalScreen}
         Key 'a' -> model {screen = AddTaskScreen}
+        Key 'u' -> model {compareTick = tick model}
         KeyUnknown mode c -> model {logs = newLog : logs model}
           where
             newLog = "Unknown character " ++ show c ++ " in " ++ show mode ++ " mode."
@@ -152,6 +155,7 @@ view model = do
       putStrLn "Keys: up, down, a and q."
       putStrLn ""
       putStrLn ("Current model is: " ++ show model)
+      putStrLn ("Compare tick: " ++ show (compareTick model))
       return (CommandMsg Nop)
     AddTaskScreen -> do
       clearScreen
