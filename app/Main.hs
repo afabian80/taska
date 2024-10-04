@@ -152,8 +152,9 @@ update msg model =
             }
         KeyDelete ->
           model
-            { tasks = deleteTask (tasks model) (index model),
+            { tasks = deleteListIndexSafe (tasks model) (index model),
               tick = tick model + 1
+              -- can fail here
             }
         KeyUnknown mode c -> model {logs = newLog : logs model}
           where
@@ -179,9 +180,9 @@ markTodo = markState Todo
 markStartStop :: [Task] -> Maybe Int -> Int -> [Task]
 markStartStop ts Nothing _ = ts
 markStartStop ts (Just i) time =
-  case taskAtIndex ts i of
+  case elemAtIndex ts i of
     Nothing -> ts
-    (Just t) -> replaceTaskAtIndex ts i (t {state = newState (state t), lastTick = time})
+    (Just t) -> replaceElemAtIndexIfExists ts i (t {state = newState (state t), lastTick = time})
   where
     newState Todo = Started
     newState Started = Stopped
@@ -191,16 +192,16 @@ markStartStop ts (Just i) time =
 markState :: TaskState -> [Task] -> Maybe Int -> Int -> [Task]
 markState _ ts Nothing _ = ts
 markState st ts (Just i) time =
-  case taskAtIndex ts i of
+  case elemAtIndex ts i of
     Nothing -> ts
-    (Just t) -> replaceTaskAtIndex ts i (t {state = st, lastTick = time})
+    (Just t) -> replaceElemAtIndexIfExists ts i (t {state = st, lastTick = time})
 
-deleteTask :: [Task] -> Maybe Int -> [Task]
-deleteTask ts Nothing = ts
-deleteTask ts (Just i) =
-  case taskAtIndex ts i of
+deleteListIndexSafe :: [Task] -> Maybe Int -> [Task]
+deleteListIndexSafe ts Nothing = ts
+deleteListIndexSafe ts (Just i) =
+  case elemAtIndex ts i of
     Nothing -> ts
-    (Just _) -> removeTaskAtIndex ts i
+    (Just _) -> removeElemAtIndexSafe ts i
 
 view :: Model -> IO Msg
 view model = do
@@ -248,24 +249,24 @@ printTask time task =
 addCursor :: [Task] -> Maybe Int -> [Task]
 addCursor ts Nothing = ts
 addCursor ts (Just i) =
-  case taskAtIndex ts i of
+  case elemAtIndex ts i of
     Nothing -> ts
-    Just t -> replaceTaskAtIndex ts i (t {active = True})
+    Just t -> replaceElemAtIndexIfExists ts i (t {active = True})
 
-replaceTaskAtIndex :: [Task] -> Int -> Task -> [Task]
-replaceTaskAtIndex ts i t =
-  case taskAtIndex ts i of
+replaceElemAtIndexIfExists :: [a] -> Int -> a -> [a]
+replaceElemAtIndexIfExists ts i t =
+  case elemAtIndex ts i of
     Just _ -> take i ts ++ [t] ++ drop (i + 1) ts
     Nothing -> ts
 
-removeTaskAtIndex :: [Task] -> Int -> [Task]
-removeTaskAtIndex ts i =
-  case taskAtIndex ts i of
+removeElemAtIndexSafe :: [a] -> Int -> [a]
+removeElemAtIndexSafe ts i =
+  case elemAtIndex ts i of
     Just _ -> take i ts ++ drop (i + 1) ts
     Nothing -> ts
 
-taskAtIndex :: [Task] -> Int -> Maybe Task
-taskAtIndex ts i =
+elemAtIndex :: [a] -> Int -> Maybe a
+elemAtIndex ts i =
   if length ts > i
     then Just (ts !! i)
     else Nothing
