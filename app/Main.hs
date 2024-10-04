@@ -5,7 +5,6 @@
 
 module Main (main, readKey) where
 
-import qualified Data.Vector as V
 import GHC.IO.Handle (BufferMode (LineBuffering, NoBuffering), hSetBuffering)
 import GHC.IO.Handle.FD (stdin)
 import System.Console.ANSI (clearScreen, setCursorPosition)
@@ -35,7 +34,7 @@ data Model
   { tick :: Int,
     index :: Maybe Int,
     logs :: [String],
-    tasks :: V.Vector Task,
+    tasks :: [Task],
     screen :: Screen,
     compareTick :: Int
   }
@@ -75,7 +74,7 @@ initModel =
     { tick = 0,
       index = Nothing,
       logs = [],
-      tasks = V.empty,
+      tasks = [],
       screen = NormalScreen,
       compareTick = 0
     }
@@ -158,37 +157,37 @@ update msg model =
       case command of
         AddTask s ->
           model
-            { tasks = V.snoc (tasks model) (Task s False (tick model) Todo),
+            { tasks = tasks model ++ [Task s False (tick model) Todo],
               screen = NormalScreen,
               tick = tick model + 1,
               index = Just 0
             }
         _ -> model
 
-markDone :: V.Vector Task -> Maybe Int -> Int -> V.Vector Task
+markDone :: [Task] -> Maybe Int -> Int -> [Task]
 markDone = markState Done
 
-markTodo :: V.Vector Task -> Maybe Int -> Int -> V.Vector Task
+markTodo :: [Task] -> Maybe Int -> Int -> [Task]
 markTodo = markState Todo
 
-markStartStop :: V.Vector Task -> Maybe Int -> Int -> V.Vector Task
+markStartStop :: [Task] -> Maybe Int -> Int -> [Task]
 markStartStop ts Nothing _ = ts
 markStartStop ts (Just i) time =
-  case (V.!?) ts i of
+  case taskAtIndex ts i of
     Nothing -> ts
-    (Just t) -> V.update ts (V.singleton (i, t {state = newState (state t), lastTick = time}))
+    (Just t) -> replaceTaskAtIndex ts i (t {state = newState (state t), lastTick = time})
   where
     newState Todo = Started
     newState Started = Stopped
     newState Stopped = Started
     newState Done = Done -- explicit Todo state is needed via different key
 
-markState :: TaskState -> V.Vector Task -> Maybe Int -> Int -> V.Vector Task
+markState :: TaskState -> [Task] -> Maybe Int -> Int -> [Task]
 markState _ ts Nothing _ = ts
 markState st ts (Just i) time =
-  case (V.!?) ts i of
+  case taskAtIndex ts i of
     Nothing -> ts
-    (Just t) -> V.update ts (V.singleton (i, t {state = st, lastTick = time}))
+    (Just t) -> replaceTaskAtIndex ts i (t {state = st, lastTick = time})
 
 view :: Model -> IO Msg
 view model = do
@@ -211,7 +210,7 @@ view model = do
       text <- getLine
       return (CommandMsg (AddTask text))
 
-render :: V.Vector Task -> Int -> IO ()
+render :: [Task] -> Int -> IO ()
 render ts time = do
   mapM_ (printTask time) ts
 
@@ -233,12 +232,24 @@ printTask time task =
         Done -> "[X]"
     showState = " " ++ showStateAux ++ " "
 
-addCursor :: V.Vector Task -> Maybe Int -> V.Vector Task
+addCursor :: [Task] -> Maybe Int -> [Task]
 addCursor vec Nothing = vec
 addCursor vec (Just i) =
-  case (V.!?) vec i of
+  case taskAtIndex vec i of
     Nothing -> vec
-    Just t -> V.update vec (V.singleton (i, t {active = True}))
+    Just t -> replaceTaskAtIndex vec i (t {active = True})
+
+replaceTaskAtIndex :: [Task] -> Int -> Task -> [Task]
+replaceTaskAtIndex ts i t =
+  case taskAtIndex ts i of
+    Just _ -> take i ts ++ [t] ++ drop (i + 1) ts
+    Nothing -> ts
+
+taskAtIndex :: [Task] -> Int -> Maybe Task
+taskAtIndex ts i =
+  if length ts > i
+    then Just (ts !! i)
+    else Nothing
 
 readKey :: InputMode -> IO Key
 readKey mode =
