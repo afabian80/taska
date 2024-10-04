@@ -56,6 +56,7 @@ data Key
   | KeyPgDown
   | KeyHome
   | KeyEnd
+  | KeyDelete
   | KeyEsc
   | Key Char
   | KeyUnknown InputMode Char
@@ -149,6 +150,11 @@ update msg model =
             { tasks = markStartStop (tasks model) (index model) (tick model),
               tick = tick model + 1
             }
+        KeyDelete ->
+          model
+            { tasks = deleteTask (tasks model) (index model),
+              tick = tick model + 1
+            }
         KeyUnknown mode c -> model {logs = newLog : logs model}
           where
             newLog = "Unknown character " ++ show c ++ " in " ++ show mode ++ " mode."
@@ -189,6 +195,13 @@ markState st ts (Just i) time =
     Nothing -> ts
     (Just t) -> replaceTaskAtIndex ts i (t {state = st, lastTick = time})
 
+deleteTask :: [Task] -> Maybe Int -> [Task]
+deleteTask ts Nothing = ts
+deleteTask ts (Just i) =
+  case taskAtIndex ts i of
+    Nothing -> ts
+    (Just _) -> removeTaskAtIndex ts i
+
 view :: Model -> IO Msg
 view model = do
   case screen model of
@@ -199,7 +212,7 @@ view model = do
       let tasksWithCursor = addCursor (tasks model) (index model)
       render tasksWithCursor (compareTick model)
       putStrLn ""
-      putStrLn "Keys: select (up, down), add (a), update_time (u), done (d), todo (t), start/stop (s), quit (q)."
+      putStrLn "Keys: select (up, down), add (a), update_time (u), done (d), todo (t), start/stop (s), delete (Del), quit (q)."
       putStrLn ""
       putStrLn ("Current model is: " ++ show model)
       return (CommandMsg Nop)
@@ -245,6 +258,12 @@ replaceTaskAtIndex ts i t =
     Just _ -> take i ts ++ [t] ++ drop (i + 1) ts
     Nothing -> ts
 
+removeTaskAtIndex :: [Task] -> Int -> [Task]
+removeTaskAtIndex ts i =
+  case taskAtIndex ts i of
+    Just _ -> take i ts ++ drop (i + 1) ts
+    Nothing -> ts
+
 taskAtIndex :: [Task] -> Int -> Maybe Task
 taskAtIndex ts i =
   if length ts > i
@@ -274,6 +293,7 @@ readKey mode =
         'D' -> return KeyLeft
         'F' -> return KeyEnd
         'H' -> return KeyHome
+        '3' -> return KeyDelete
         '5' -> readKey (IMAwaitTilde '5')
         '6' -> readKey (IMAwaitTilde '6')
         _ -> return (KeyUnknown IMAwaitControl c)
