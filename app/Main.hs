@@ -233,11 +233,11 @@ printTask time task =
     showState = " " ++ showStateAux ++ " "
 
 addCursor :: [Task] -> Maybe Int -> [Task]
-addCursor vec Nothing = vec
-addCursor vec (Just i) =
-  case taskAtIndex vec i of
-    Nothing -> vec
-    Just t -> replaceTaskAtIndex vec i (t {active = True})
+addCursor ts Nothing = ts
+addCursor ts (Just i) =
+  case taskAtIndex ts i of
+    Nothing -> ts
+    Just t -> replaceTaskAtIndex ts i (t {active = True})
 
 replaceTaskAtIndex :: [Task] -> Int -> Task -> [Task]
 replaceTaskAtIndex ts i t =
