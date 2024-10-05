@@ -20,7 +20,6 @@ import System.Console.ANSI
 import System.IO.Error (catchIOError)
 import Text.Read (readMaybe)
 
--- TODO database gets huge very quickly (~10 tasks), because of the undo stack
 -- TODO task details in a different place
 
 data TaskState
@@ -43,6 +42,7 @@ data Screen
   = NormalScreen
   | AddTaskScreen
   | EditTaskScreen
+  | HelpScreen
   deriving (Show, Eq, Read)
 
 data Model
@@ -86,6 +86,7 @@ data Command
   = Nop
   | AddTask String
   | EditTask (Maybe Int) String
+  | ToNormalMode
   deriving (Show, Eq)
 
 data Msg = KeyMsg Key | CommandMsg Command deriving (Show, Eq)
@@ -162,6 +163,7 @@ update msg model =
                 (index model)
         KeyEsc -> model {screen = NormalScreen}
         Key 'a' -> model {screen = AddTaskScreen}
+        Key 'h' -> model {screen = HelpScreen}
         Key 'e' ->
           case index model of
             Just _ -> model {screen = EditTaskScreen}
@@ -230,7 +232,10 @@ update msg model =
             }
           where
             newTick = tick model + 1
-        _ -> model
+        ToNormalMode ->
+          model {screen = NormalScreen}
+        Nop -> model
+
 
 markDone :: [Task] -> Maybe Int -> Int -> [Task]
 markDone = markState Done
@@ -270,16 +275,10 @@ view model = do
     NormalScreen -> do
       clearScreen
       setCursorPosition 0 0
-      putStrLn "Tasks:"
+      let undoStackSize = stackSize ( undoStack model)
+      putStrLn $ "Tasks:           [press 'h' for help, Undo: " ++ show undoStackSize ++ "]"
       let tasksWithCursor = addCursor (tasks model) (index model)
       render tasksWithCursor (compareTick model)
-      putStrLn ""
-      putStrLn "Keys: select (up, down), add (a), checkpoint (c), done (d), todo (t), start/stop (s), delete (Del), edit (e), undo (U), quit (q)."
-      putStrLn ""
-      let undoStackSize = stackSize ( undoStack model)
-      putStrLn ("Undo stack size: " ++ show undoStackSize)
-      -- let modelWithoutUndoStack = model {undoStack = stackNew}
-      -- putStrLn ("Current model is: " ++ show modelWithoutUndoStack)
       return (CommandMsg Nop)
     AddTaskScreen -> do
       clearScreen
@@ -293,6 +292,16 @@ view model = do
       putStrLn "Edited title (leave empty to cancel): "
       text <- getLine
       return (CommandMsg (EditTask (index model) text))
+    HelpScreen -> do
+      clearScreen
+      setCursorPosition 0 0
+      putStrLn "Help screen"
+      putStrLn ""
+      putStrLn "Keys: select (up, down), add (a), checkpoint (c), done (d), todo (t), start/stop (s), delete (Del), edit (e), undo (U), quit (q)."
+      putStrLn ""
+      putStrLn "Press ENTER to exit"
+      _ <- getLine
+      return (CommandMsg ToNormalMode)
 
 render :: [Task] -> Int -> IO ()
 render ts time = do
