@@ -317,11 +317,31 @@ view model = do
       setCursorPosition 0 0
       putStrLn "Help screen"
       putStrLn ""
-      putStrLn "Keys: select (up, down), add (a), checkpoint (c), done (d), todo (t), start/stop (s), delete (Del), edit (e), undo (U), quit (q)."
+      renderKeyHelper keys
       putStrLn ""
       putStrLn "Press ENTER to exit"
       _ <- getLine
       return (CommandMsg ToNormalMode)
+
+keys :: [(String, String)]
+keys =
+  [ ("a", "add task"),
+    ("c", "checkpoint in time"),
+    ("d", "mark task as done"),
+    ("Del", "delete task"),
+    ("e", "edit task title"),
+    ("q", "quit"),
+    ("s", "start/stop task"),
+    ("t", "mark task as todo"),
+    ("U", "undo"),
+    ("Up/Down", "Move in list")
+  ]
+
+renderKeyHelper :: [(String, String)] -> IO ()
+renderKeyHelper = mapM_ renderKey
+
+renderKey :: (String, String) -> IO ()
+renderKey (k, s) = putStrLn $ k ++ ": " ++ s
 
 render :: [Task] -> Int -> IO ()
 render ts time = do
