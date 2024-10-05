@@ -301,20 +301,19 @@ renderTask :: Int -> Task -> IO ()
 renderTask time task
   | active task = do
       setSGR [SetSwapForegroundBackground True]
-      putStrLn (showNew ++ ">" ++ showState ++ title task)
+      putStrLn (">" ++ showState ++ title task)
       setSGR [Reset]
   | isNew = do
           setSGR [SetColor Background Dull Green]
           setSGR [SetColor Foreground Dull Black]
-          putStrLn (showNew ++ " " ++ showState ++ title task)
+          putStrLn (" " ++ showState ++ title task)
           setSGR [Reset]
   | otherwise = do
           setSGR [SetColor Foreground Dull White]
-          putStrLn (showNew ++ " " ++ showState ++ title task)
+          putStrLn (" " ++ showState ++ title task)
           setSGR [Reset]
   where
       isNew = lastTick task >= time
-      showNew = if isNew then " * " else "   "
       showStateAux
         = case state task of
             Todo -> "[ ]"
