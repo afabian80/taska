@@ -16,7 +16,7 @@ import System.Console.ANSI
       Color(White, Green, Black),
       ColorIntensity(Dull),
       ConsoleLayer(Foreground, Background),
-      SGR(Reset, SetSwapForegroundBackground, SetColor) )
+      SGR(Reset, SetSwapForegroundBackground, SetColor), hideCursor, showCursor )
 import System.IO.Error (catchIOError)
 import Text.Read (readMaybe)
 
@@ -271,8 +271,10 @@ deleteListIndexSafe ts (Just i) =
 
 view :: Model -> IO Msg
 view model = do
+  showCursor
   case screen model of
     NormalScreen -> do
+      hideCursor
       clearScreen
       setCursorPosition 0 0
       let undoStackSize = stackSize ( undoStack model)
@@ -293,6 +295,7 @@ view model = do
       text <- getLine
       return (CommandMsg (EditTask (index model) text))
     HelpScreen -> do
+      hideCursor
       clearScreen
       setCursorPosition 0 0
       putStrLn "Help screen"
