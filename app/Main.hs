@@ -27,7 +27,11 @@ data Task
   }
   deriving (Show, Read, Eq)
 
-data Screen = NormalScreen | AddTaskScreen deriving (Show, Eq, Read)
+data Screen
+  = NormalScreen
+  | AddTaskScreen
+  | EditTaskScreen
+  deriving (Show, Eq, Read)
 
 data Model
   = Model
@@ -65,7 +69,11 @@ data Key
 dataFile :: FilePath
 dataFile = "taska.txt"
 
-data Command = Nop | AddTask String deriving (Show, Eq)
+data Command
+  = Nop
+  | AddTask String
+  | EditTask (Maybe Int) String
+  deriving (Show, Eq)
 
 data Msg = KeyMsg Key | CommandMsg Command deriving (Show, Eq)
 
@@ -134,6 +142,10 @@ update msg model =
                 (index model)
         KeyEsc -> model {screen = NormalScreen}
         Key 'a' -> model {screen = AddTaskScreen}
+        Key 'e' ->
+          case index model of
+            Just _ -> model {screen = EditTaskScreen}
+            Nothing -> model
         Key 'u' -> model {compareTick = tick model}
         Key ' ' ->
           model
@@ -171,6 +183,19 @@ update msg model =
               tick = tick model + 1,
               index = Just 0
             }
+        EditTask Nothing _ -> model {screen = NormalScreen}
+        EditTask (Just _) [] -> model {screen = NormalScreen}
+        EditTask (Just i) s ->
+          model
+            { tasks = case elemAtIndex (tasks model) i of
+                Just t -> replaceElemAtIndexIfExists (tasks model) i (t {title = s, lastTick = tick model})
+                Nothing -> tasks model,
+              screen = NormalScreen,
+              tick = newTick,
+              index = Just 0
+            }
+          where
+            newTick = tick model + 1
         _ -> model
 
 markDone :: [Task] -> Maybe Int -> Int -> [Task]
@@ -215,7 +240,7 @@ view model = do
       let tasksWithCursor = addCursor (tasks model) (index model)
       render tasksWithCursor (compareTick model)
       putStrLn ""
-      putStrLn "Keys: select (up, down), add (a), update_time (u), done (d), todo (t), start/stop (s), delete (Del), quit (q)."
+      putStrLn "Keys: select (up, down), add (a), update_time (u), done (d), todo (t), start/stop (s), delete (Del), edit (e), quit (q)."
       putStrLn ""
       putStrLn ("Current model is: " ++ show model)
       return (CommandMsg Nop)
@@ -225,6 +250,12 @@ view model = do
       putStrLn "New task: "
       text <- getLine
       return (CommandMsg (AddTask text))
+    EditTaskScreen -> do
+      clearScreen
+      setCursorPosition 0 0
+      putStrLn "Edited title (leave empty to cancel): "
+      text <- getLine
+      return (CommandMsg (EditTask (index model) text))
 
 render :: [Task] -> Int -> IO ()
 render ts time = do
