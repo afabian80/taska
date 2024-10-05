@@ -152,7 +152,7 @@ update msg model =
           case index model of
             Just _ -> model {screen = EditTaskScreen}
             Nothing -> model
-        Key 'u' -> model {compareTick = tick model, undoStack = stackPush (undoStack model) model}
+        Key 'c' -> model {compareTick = tick model, undoStack = stackPush (undoStack model) model}
         Key 'U' ->
           let
             undoItem = stackPop (undoStack model)
@@ -260,7 +260,7 @@ view model = do
       let tasksWithCursor = addCursor (tasks model) (index model)
       render tasksWithCursor (compareTick model)
       putStrLn ""
-      putStrLn "Keys: select (up, down), add (a), update_time (u), done (d), todo (t), start/stop (s), delete (Del), edit (e), undo (U), quit (q)."
+      putStrLn "Keys: select (up, down), add (a), checkpoint (c), done (d), todo (t), start/stop (s), delete (Del), edit (e), undo (U), quit (q)."
       putStrLn ""
       putStrLn ("Current model is: " ++ show model)
       return (CommandMsg Nop)
