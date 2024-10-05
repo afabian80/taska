@@ -295,10 +295,10 @@ view model = do
 
 render :: [Task] -> Int -> IO ()
 render ts time = do
-  mapM_ (printTask time) ts
+  mapM_ (renderTask time) ts
 
-printTask :: Int -> Task -> IO ()
-printTask time task
+renderTask :: Int -> Task -> IO ()
+renderTask time task
   | active task = do
       setSGR [SetSwapForegroundBackground True]
       putStrLn (showNew ++ ">" ++ showState ++ title task ++ showTick)
