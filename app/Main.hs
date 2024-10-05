@@ -20,6 +20,7 @@ import System.Console.ANSI
 import System.IO.Error (catchIOError)
 import Text.Read (readMaybe)
 
+-- TODO database gets huge very quickly (~10 tasks), because of the undo stack
 -- TODO task details in a different place
 
 data TaskState
