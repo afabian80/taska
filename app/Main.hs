@@ -5,7 +5,7 @@
 
 module Main (main, readKey) where
 
-import Data.Stack ( Stack, stackNew, stackPop, stackPush )
+import Data.Stack ( Stack, stackNew, stackPop, stackPush, stackSize )
 import GHC.IO.Handle (BufferMode (LineBuffering, NoBuffering), hSetBuffering)
 import GHC.IO.Handle.FD (stdin)
 import System.Console.ANSI (clearScreen, setCursorPosition)
@@ -262,7 +262,10 @@ view model = do
       putStrLn ""
       putStrLn "Keys: select (up, down), add (a), checkpoint (c), done (d), todo (t), start/stop (s), delete (Del), edit (e), undo (U), quit (q)."
       putStrLn ""
-      putStrLn ("Current model is: " ++ show model)
+      let undoStackSize = stackSize( undoStack model)
+      putStrLn ("Undo stack size: " ++ show undoStackSize)
+      let modelWithoutUndoStack = model {undoStack = stackNew}
+      putStrLn ("Current model is: " ++ show modelWithoutUndoStack)
       return (CommandMsg Nop)
     AddTaskScreen -> do
       clearScreen
