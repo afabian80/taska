@@ -7,8 +7,13 @@ module Main (main, readKey) where
 
 import Data.Stack ( Stack, stackNew, stackPop, stackPush, stackSize )
 import GHC.IO.Handle (BufferMode (LineBuffering, NoBuffering), hSetBuffering)
-import GHC.IO.Handle.FD (stdin)
-import System.Console.ANSI (clearScreen, setCursorPosition)
+import GHC.IO.Handle.FD (stdin, stdout)
+import System.Console.ANSI
+    ( clearScreen,
+      hNowSupportsANSI,
+      setCursorPosition,
+      setSGR,
+      SGR(Reset, SetSwapForegroundBackground) )
 import System.IO.Error (catchIOError)
 import Text.Read (readMaybe)
 
@@ -96,13 +101,19 @@ initModel =
 
 main :: IO ()
 main = do
-  databaseStr <- catchIOError (readFile dataFile) (\_ -> return (show initModel)) -- ignore all errors and start a fresh database
-  let maybeModel = readMaybe databaseStr :: Maybe Model
-  case maybeModel of
-    Nothing -> putStrLn ("Corrupt database file. Delete " ++ dataFile ++ " to start a new database on model change.")
-    Just model -> do
-      let newModel = model {logs = [], undoStack = stackNew} -- clean logs and undo when loading model database
-      loop newModel
+  stdoutSupportsANSI <- hNowSupportsANSI stdout
+  if not stdoutSupportsANSI
+    then
+      putStrLn "Standard output does not support 'ANSI' escape codes."
+    else
+      do
+        databaseStr <- catchIOError (readFile dataFile) (\_ -> return (show initModel)) -- ignore all errors and start a fresh database
+        let maybeModel = readMaybe databaseStr :: Maybe Model
+        case maybeModel of
+          Nothing -> putStrLn ("Corrupt database file. Delete " ++ dataFile ++ " to start a new database on model change.")
+          Just model -> do
+            let newModel = model {logs = [], undoStack = stackNew} -- clean logs and undo when loading model database
+            loop newModel
 
 loop :: Model -> IO ()
 loop model = do
@@ -287,8 +298,11 @@ render ts time = do
 printTask :: Int -> Task -> IO ()
 printTask time task =
   if active task
-    then
+    then do
+      -- setSGR [SetColor Foreground Vivid Green]
+      setSGR [SetSwapForegroundBackground True]
       putStrLn (showNew ++ ">" ++ showState ++ title task ++ showTick)
+      setSGR [Reset]
     else
       putStrLn (showNew ++ " " ++ showState ++ title task ++ showTick)
   where
