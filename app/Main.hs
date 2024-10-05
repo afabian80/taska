@@ -277,8 +277,8 @@ view model = do
       putStrLn ""
       let undoStackSize = stackSize ( undoStack model)
       putStrLn ("Undo stack size: " ++ show undoStackSize)
-      let modelWithoutUndoStack = model {undoStack = stackNew}
-      putStrLn ("Current model is: " ++ show modelWithoutUndoStack)
+      -- let modelWithoutUndoStack = model {undoStack = stackNew}
+      -- putStrLn ("Current model is: " ++ show modelWithoutUndoStack)
       return (CommandMsg Nop)
     AddTaskScreen -> do
       clearScreen
@@ -301,19 +301,18 @@ renderTask :: Int -> Task -> IO ()
 renderTask time task
   | active task = do
       setSGR [SetSwapForegroundBackground True]
-      putStrLn (showNew ++ ">" ++ showState ++ title task ++ showTick)
+      putStrLn (showNew ++ ">" ++ showState ++ title task)
       setSGR [Reset]
   | isNew = do
           setSGR [SetColor Background Dull Green]
           setSGR [SetColor Foreground Dull Black]
-          putStrLn (showNew ++ " " ++ showState ++ title task ++ showTick)
+          putStrLn (showNew ++ " " ++ showState ++ title task)
           setSGR [Reset]
   | otherwise = do
           setSGR [SetColor Foreground Dull White]
-          putStrLn (showNew ++ " " ++ showState ++ title task ++ showTick)
+          putStrLn (showNew ++ " " ++ showState ++ title task)
           setSGR [Reset]
   where
-      showTick = " (" ++ show (lastTick task) ++ ")"
       isNew = lastTick task >= time
       showNew = if isNew then " * " else "   "
       showStateAux
