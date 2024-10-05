@@ -152,10 +152,12 @@ update msg model =
             }
         KeyDelete ->
           model
-            { tasks = deleteListIndexSafe (tasks model) (index model),
-              tick = tick model + 1
-              -- can fail here
+            { tasks = newTasks,
+              tick = tick model + 1,
+              index = if not (null newTasks) then Just 0 else Nothing
             }
+          where
+            newTasks = deleteListIndexSafe (tasks model) (index model)
         KeyUnknown mode c -> model {logs = newLog : logs model}
           where
             newLog = "Unknown character " ++ show c ++ " in " ++ show mode ++ " mode."
@@ -266,8 +268,9 @@ removeElemAtIndexSafe ts i =
     Nothing -> ts
 
 elemAtIndex :: [a] -> Int -> Maybe a
+elemAtIndex [] _ = Nothing
 elemAtIndex ts i =
-  if length ts > i
+  if length ts > i && i >= 0
     then Just (ts !! i)
     else Nothing
 
