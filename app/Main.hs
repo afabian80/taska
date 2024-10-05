@@ -53,7 +53,7 @@ data Model
     tasks :: [Task],
     screen :: Screen,
     compareTick :: Int,
-    undoStack :: Stack Model
+    undoStack :: Stack [Task]
   }
   deriving (Show, Read)
 
@@ -166,39 +166,39 @@ update msg model =
           case index model of
             Just _ -> model {screen = EditTaskScreen}
             Nothing -> model
-        Key 'c' -> model {compareTick = tick model, undoStack = stackPush (undoStack model) model}
+        Key 'c' -> model {compareTick = tick model, undoStack = stackPush (undoStack model) (tasks model)}
         Key 'U' ->
           let
             undoItem = stackPop (undoStack model)
           in
             case undoItem of
-              Just (newUndoStack, newModel) ->
-                newModel {compareTick = tick newModel, undoStack = newUndoStack}
+              Just (newUndoStack, newTasks) ->
+                model {tasks = newTasks, undoStack = newUndoStack}
               Nothing -> model
         Key ' ' ->
           model
             { tasks = markDone (tasks model) (index model) (tick model),
               tick = tick model + 1,
-              undoStack = stackPush (undoStack model) model
+              undoStack = stackPush (undoStack model) (tasks model)
             }
         Key 't' ->
           model
             { tasks = markTodo (tasks model) (index model) (tick model),
               tick = tick model + 1,
-              undoStack = stackPush (undoStack model) model
+              undoStack = stackPush (undoStack model) (tasks model)
             }
         Key 's' ->
           model
             { tasks = markStartStop (tasks model) (index model) (tick model),
               tick = tick model + 1,
-              undoStack = stackPush (undoStack model) model
+              undoStack = stackPush (undoStack model) (tasks model)
             }
         KeyDelete ->
           model
             { tasks = newTasks,
               tick = tick model + 1,
               index = if not (null newTasks) then Just 0 else Nothing,
-              undoStack = stackPush (undoStack model) model
+              undoStack = stackPush (undoStack model) (tasks model)
             }
           where
             newTasks = deleteListIndexSafe (tasks model) (index model)
@@ -214,7 +214,7 @@ update msg model =
               screen = NormalScreen,
               tick = tick model + 1,
               index = Just 0,
-              undoStack = stackPush (undoStack model) model
+              undoStack = stackPush (undoStack model) (tasks model)
             }
         EditTask Nothing _ -> model {screen = NormalScreen}
         EditTask (Just _) [] -> model {screen = NormalScreen}
@@ -226,7 +226,7 @@ update msg model =
               screen = NormalScreen,
               tick = newTick,
               index = Just 0,
-              undoStack = stackPush (undoStack model) model
+              undoStack = stackPush (undoStack model) (tasks model)
             }
           where
             newTick = tick model + 1
