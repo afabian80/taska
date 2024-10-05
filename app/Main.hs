@@ -13,11 +13,13 @@ import System.Console.ANSI
       hNowSupportsANSI,
       setCursorPosition,
       setSGR,
-      SGR(Reset, SetSwapForegroundBackground) )
+      Color(White, Green, Black),
+      ColorIntensity(Dull),
+      ConsoleLayer(Foreground, Background),
+      SGR(Reset, SetSwapForegroundBackground, SetColor) )
 import System.IO.Error (catchIOError)
 import Text.Read (readMaybe)
 
--- TODO task coloring
 -- TODO task details in a different place
 
 data TaskState
@@ -273,7 +275,7 @@ view model = do
       putStrLn ""
       putStrLn "Keys: select (up, down), add (a), checkpoint (c), done (d), todo (t), start/stop (s), delete (Del), edit (e), undo (U), quit (q)."
       putStrLn ""
-      let undoStackSize = stackSize( undoStack model)
+      let undoStackSize = stackSize ( undoStack model)
       putStrLn ("Undo stack size: " ++ show undoStackSize)
       let modelWithoutUndoStack = model {undoStack = stackNew}
       putStrLn ("Current model is: " ++ show modelWithoutUndoStack)
@@ -296,25 +298,31 @@ render ts time = do
   mapM_ (printTask time) ts
 
 printTask :: Int -> Task -> IO ()
-printTask time task =
-  if active task
-    then do
-      -- setSGR [SetColor Foreground Vivid Green]
+printTask time task
+  | active task = do
       setSGR [SetSwapForegroundBackground True]
       putStrLn (showNew ++ ">" ++ showState ++ title task ++ showTick)
       setSGR [Reset]
-    else
-      putStrLn (showNew ++ " " ++ showState ++ title task ++ showTick)
+  | isNew = do
+          setSGR [SetColor Background Dull Green]
+          setSGR [SetColor Foreground Dull Black]
+          putStrLn (showNew ++ " " ++ showState ++ title task ++ showTick)
+          setSGR [Reset]
+  | otherwise = do
+          setSGR [SetColor Foreground Dull White]
+          putStrLn (showNew ++ " " ++ showState ++ title task ++ showTick)
+          setSGR [Reset]
   where
-    showTick = " (" ++ show (lastTick task) ++ ")"
-    showNew = if lastTick task >= time then " * " else "   "
-    showStateAux =
-      case state task of
-        Todo -> "[ ]"
-        Started -> "[S]"
-        Stopped -> "[T]"
-        Done -> "[X]"
-    showState = " " ++ showStateAux ++ " "
+      showTick = " (" ++ show (lastTick task) ++ ")"
+      isNew = lastTick task >= time
+      showNew = if isNew then " * " else "   "
+      showStateAux
+        = case state task of
+            Todo -> "[ ]"
+            Started -> "[S]"
+            Stopped -> "[T]"
+            Done -> "[X]"
+      showState = " " ++ showStateAux ++ " "
 
 addCursor :: [Task] -> Maybe Int -> [Task]
 addCursor ts Nothing = ts
