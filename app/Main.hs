@@ -5,11 +5,15 @@
 
 module Main (main, readKey) where
 
+import Data.Stack ( Stack, stackNew, stackPop, stackPush )
 import GHC.IO.Handle (BufferMode (LineBuffering, NoBuffering), hSetBuffering)
 import GHC.IO.Handle.FD (stdin)
 import System.Console.ANSI (clearScreen, setCursorPosition)
 import System.IO.Error (catchIOError)
 import Text.Read (readMaybe)
+
+-- TODO task coloring
+-- TODO task details in a different place
 
 data TaskState
   = Todo
@@ -40,7 +44,8 @@ data Model
     logs :: [String],
     tasks :: [Task],
     screen :: Screen,
-    compareTick :: Int
+    compareTick :: Int,
+    undoStack :: Stack Model
   }
   deriving (Show, Read)
 
@@ -85,7 +90,8 @@ initModel =
       logs = [],
       tasks = [],
       screen = NormalScreen,
-      compareTick = 0
+      compareTick = 0,
+      undoStack = stackNew
     }
 
 main :: IO ()
@@ -95,7 +101,7 @@ main = do
   case maybeModel of
     Nothing -> putStrLn ("Corrupt database file. Delete " ++ dataFile ++ " to start a new database on model change.")
     Just model -> do
-      let newModel = model {logs = []} -- clean logs when loading model database
+      let newModel = model {logs = [], undoStack = stackNew} -- clean logs and undo when loading model database
       loop newModel
 
 loop :: Model -> IO ()
@@ -146,27 +152,39 @@ update msg model =
           case index model of
             Just _ -> model {screen = EditTaskScreen}
             Nothing -> model
-        Key 'u' -> model {compareTick = tick model}
+        Key 'u' -> model {compareTick = tick model, undoStack = stackPush (undoStack model) model}
+        Key 'U' ->
+          let
+            undoItem = stackPop (undoStack model)
+          in
+            case undoItem of
+              Just (newUndoStack, newModel) ->
+                newModel {compareTick = tick newModel, undoStack = newUndoStack}
+              Nothing -> model
         Key ' ' ->
           model
             { tasks = markDone (tasks model) (index model) (tick model),
-              tick = tick model + 1
+              tick = tick model + 1,
+              undoStack = stackPush (undoStack model) model
             }
         Key 't' ->
           model
             { tasks = markTodo (tasks model) (index model) (tick model),
-              tick = tick model + 1
+              tick = tick model + 1,
+              undoStack = stackPush (undoStack model) model
             }
         Key 's' ->
           model
             { tasks = markStartStop (tasks model) (index model) (tick model),
-              tick = tick model + 1
+              tick = tick model + 1,
+              undoStack = stackPush (undoStack model) model
             }
         KeyDelete ->
           model
             { tasks = newTasks,
               tick = tick model + 1,
-              index = if not (null newTasks) then Just 0 else Nothing
+              index = if not (null newTasks) then Just 0 else Nothing,
+              undoStack = stackPush (undoStack model) model
             }
           where
             newTasks = deleteListIndexSafe (tasks model) (index model)
@@ -181,7 +199,8 @@ update msg model =
             { tasks = tasks model ++ [Task s False (tick model) Todo],
               screen = NormalScreen,
               tick = tick model + 1,
-              index = Just 0
+              index = Just 0,
+              undoStack = stackPush (undoStack model) model
             }
         EditTask Nothing _ -> model {screen = NormalScreen}
         EditTask (Just _) [] -> model {screen = NormalScreen}
@@ -192,7 +211,8 @@ update msg model =
                 Nothing -> tasks model,
               screen = NormalScreen,
               tick = newTick,
-              index = Just 0
+              index = Just 0,
+              undoStack = stackPush (undoStack model) model
             }
           where
             newTick = tick model + 1
@@ -240,7 +260,7 @@ view model = do
       let tasksWithCursor = addCursor (tasks model) (index model)
       render tasksWithCursor (compareTick model)
       putStrLn ""
-      putStrLn "Keys: select (up, down), add (a), update_time (u), done (d), todo (t), start/stop (s), delete (Del), edit (e), quit (q)."
+      putStrLn "Keys: select (up, down), add (a), update_time (u), done (d), todo (t), start/stop (s), delete (Del), edit (e), undo (U), quit (q)."
       putStrLn ""
       putStrLn ("Current model is: " ++ show model)
       return (CommandMsg Nop)
