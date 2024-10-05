@@ -123,10 +123,7 @@ main = do
                 ++ dataFile
                 ++ " to start a new database on model change."
             )
-        Just model -> do
-          -- clean logs and undo stack when loading model database
-          let newModel = model {logs = [], undoStack = stackNew}
-          loop newModel
+        Just model -> loop (model {logs = []}) -- logs are kept only for debugging with the database file
 
 loop :: Model -> IO ()
 loop model = do
@@ -139,6 +136,7 @@ loop model = do
       if key == Key 'q'
         then do
           persistModel model
+          showCursor
           putStrLn "Bye"
         else do
           let newModel = update (KeyMsg key) model
@@ -150,8 +148,9 @@ loop model = do
       loop newModel
 
 persistModel :: Model -> IO ()
-persistModel model =
-  writeFile dataFile (show model)
+persistModel model = do
+  let cleanModel = model {undoStack = stackNew}
+  writeFile dataFile (show cleanModel)
 
 update :: Msg -> Model -> Model
 update msg model =
