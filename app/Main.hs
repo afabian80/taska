@@ -5,18 +5,21 @@
 
 module Main (main, readKey) where
 
-import Data.Stack ( Stack, stackNew, stackPop, stackPush, stackSize )
+import Data.Stack (Stack, stackNew, stackPop, stackPush, stackSize)
 import GHC.IO.Handle (BufferMode (LineBuffering, NoBuffering), hSetBuffering)
 import GHC.IO.Handle.FD (stdin, stdout)
 import System.Console.ANSI
-    ( clearScreen,
-      hNowSupportsANSI,
-      setCursorPosition,
-      setSGR,
-      Color(White, Green, Black),
-      ColorIntensity(Dull),
-      ConsoleLayer(Foreground, Background),
-      SGR(Reset, SetSwapForegroundBackground, SetColor), hideCursor, showCursor )
+  ( Color (Black, Green, White),
+    ColorIntensity (Dull),
+    ConsoleLayer (Background, Foreground),
+    SGR (Reset, SetColor, SetSwapForegroundBackground),
+    clearScreen,
+    hNowSupportsANSI,
+    hideCursor,
+    setCursorPosition,
+    setSGR,
+    showCursor,
+  )
 import System.IO.Error (catchIOError)
 import Text.Read (readMaybe)
 
@@ -109,15 +112,21 @@ main = do
   if not stdoutSupportsANSI
     then
       putStrLn "Standard output does not support 'ANSI' escape codes."
-    else
-      do
-        databaseStr <- catchIOError (readFile dataFile) (\_ -> return (show initModel)) -- ignore all errors and start a fresh database
-        let maybeModel = readMaybe databaseStr :: Maybe Model
-        case maybeModel of
-          Nothing -> putStrLn ("Corrupt database file. Delete " ++ dataFile ++ " to start a new database on model change.")
-          Just model -> do
-            let newModel = model {logs = [], undoStack = stackNew} -- clean logs and undo when loading model database
-            loop newModel
+    else do
+      -- ignore all errors and start a fresh database
+      databaseStr <- catchIOError (readFile dataFile) (\_ -> return (show initModel))
+      let maybeModel = readMaybe databaseStr :: Maybe Model
+      case maybeModel of
+        Nothing ->
+          putStrLn
+            ( "Corrupt database file. Delete "
+                ++ dataFile
+                ++ " to start a new database on model change."
+            )
+        Just model -> do
+          -- clean logs and undo stack when loading model database
+          let newModel = model {logs = [], undoStack = stackNew}
+          loop newModel
 
 loop :: Model -> IO ()
 loop model = do
@@ -168,15 +177,17 @@ update msg model =
           case index model of
             Just _ -> model {screen = EditTaskScreen}
             Nothing -> model
-        Key 'c' -> model {compareTick = tick model, undoStack = stackPush (undoStack model) (tasks model)}
+        Key 'c' ->
+          model
+            { compareTick = tick model,
+              undoStack = stackPush (undoStack model) (tasks model)
+            }
         Key 'U' ->
-          let
-            undoItem = stackPop (undoStack model)
-          in
-            case undoItem of
-              Just (newUndoStack, newTasks) ->
-                model {tasks = newTasks, undoStack = newUndoStack}
-              Nothing -> model
+          let undoItem = stackPop (undoStack model)
+           in case undoItem of
+                Just (newUndoStack, newTasks) ->
+                  model {tasks = newTasks, undoStack = newUndoStack}
+                Nothing -> model
         Key ' ' ->
           model
             { tasks = markDone (tasks model) (index model) (tick model),
@@ -223,7 +234,11 @@ update msg model =
         EditTask (Just i) s ->
           model
             { tasks = case elemAtIndex (tasks model) i of
-                Just t -> replaceElemAtIndexIfExists (tasks model) i (t {title = s, lastTick = tick model})
+                Just t ->
+                  replaceElemAtIndexIfExists
+                    (tasks model)
+                    i
+                    (t {title = s, lastTick = tick model})
                 Nothing -> tasks model,
               screen = NormalScreen,
               tick = newTick,
@@ -236,7 +251,6 @@ update msg model =
           model {screen = NormalScreen}
         Nop -> model
 
-
 markDone :: [Task] -> Maybe Int -> Int -> [Task]
 markDone = markState Done
 
@@ -248,7 +262,11 @@ markStartStop ts Nothing _ = ts
 markStartStop ts (Just i) time =
   case elemAtIndex ts i of
     Nothing -> ts
-    (Just t) -> replaceElemAtIndexIfExists ts i (t {state = newState (state t), lastTick = time})
+    (Just t) ->
+      replaceElemAtIndexIfExists
+        ts
+        i
+        (t {state = newState (state t), lastTick = time})
   where
     newState Todo = Started
     newState Started = Stopped
@@ -277,7 +295,7 @@ view model = do
       hideCursor
       clearScreen
       setCursorPosition 0 0
-      let undoStackSize = stackSize ( undoStack model)
+      let undoStackSize = stackSize (undoStack model)
       putStrLn $ "Tasks:           [press 'h' for help, Undo: " ++ show undoStackSize ++ "]"
       let tasksWithCursor = addCursor (tasks model) (index model)
       render tasksWithCursor (compareTick model)
@@ -317,23 +335,23 @@ renderTask time task
       putStrLn (">" ++ showState ++ title task)
       setSGR [Reset]
   | isNew = do
-          setSGR [SetColor Background Dull Green]
-          setSGR [SetColor Foreground Dull Black]
-          putStrLn (" " ++ showState ++ title task)
-          setSGR [Reset]
+      setSGR [SetColor Background Dull Green]
+      setSGR [SetColor Foreground Dull Black]
+      putStrLn (" " ++ showState ++ title task)
+      setSGR [Reset]
   | otherwise = do
-          setSGR [SetColor Foreground Dull White]
-          putStrLn (" " ++ showState ++ title task)
-          setSGR [Reset]
+      setSGR [SetColor Foreground Dull White]
+      putStrLn (" " ++ showState ++ title task)
+      setSGR [Reset]
   where
-      isNew = lastTick task >= time
-      showStateAux
-        = case state task of
-            Todo -> "[ ]"
-            Started -> "[S]"
-            Stopped -> "[T]"
-            Done -> "[X]"
-      showState = " " ++ showStateAux ++ " "
+    isNew = lastTick task >= time
+    showStateAux =
+      case state task of
+        Todo -> "[ ]"
+        Started -> "[S]"
+        Stopped -> "[T]"
+        Done -> "[X]"
+    showState = " " ++ showStateAux ++ " "
 
 addCursor :: [Task] -> Maybe Int -> [Task]
 addCursor ts Nothing = ts
