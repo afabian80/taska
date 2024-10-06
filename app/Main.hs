@@ -5,6 +5,7 @@
 
 module Main (main, readKey) where
 
+import Data.List (isPrefixOf)
 import Data.Stack (Stack, stackNew, stackPop, stackPush, stackSize)
 import GHC.IO.Handle (BufferMode (LineBuffering, NoBuffering), hSetBuffering)
 import GHC.IO.Handle.FD (stdin, stdout)
@@ -31,6 +32,8 @@ data TaskState
   | Stopped
   | Done
   deriving (Show, Eq, Read)
+
+-- TODO highlight tags
 
 data Task
   = Task
@@ -378,16 +381,16 @@ renderTask :: Int -> Task -> IO ()
 renderTask time task
   | active task = do
       setSGR [SetSwapForegroundBackground True]
-      putStrLn (">" ++ showState ++ mark ++ title task)
+      putStrLn (">" ++ showState ++ mark ++ titleNoTags ++ tagsPart)
       setSGR [Reset]
   | isNew = do
       setSGR [SetColor Background Dull Green]
       setSGR [SetColor Foreground Dull Black]
-      putStrLn (" " ++ showState ++ mark ++ title task)
+      putStrLn (" " ++ showState ++ mark ++ titleNoTags ++ tagsPart)
       setSGR [Reset]
   | otherwise = do
       setSGR [SetColor Foreground Dull White]
-      putStrLn (" " ++ showState ++ mark ++ title task)
+      putStrLn (" " ++ showState ++ mark ++ titleNoTags ++ tagsPart)
       setSGR [Reset]
   where
     isNew = lastTick task >= time
@@ -399,6 +402,9 @@ renderTask time task
         Done -> "[X]"
     showState = " " ++ showStateAux ++ " "
     mark = if marked task then "* " else ""
+    titleTags = filter (isPrefixOf "#") (words (title task))
+    tagsPart = if null titleTags then "" else " [" ++ unwords titleTags ++ "]"
+    titleNoTags = unwords (filter (not . isPrefixOf "#") (words (title task)))
 
 addCursor :: [Task] -> Maybe Int -> [Task]
 addCursor ts Nothing = ts
