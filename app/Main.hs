@@ -44,7 +44,7 @@ data Task
 data Screen
   = NormalScreen
   | AddTaskScreen
-  | EditTaskScreen
+  | EditTaskScreen String
   | HelpScreen
   deriving (Show, Eq, Read)
 
@@ -174,7 +174,10 @@ update msg model =
         Key 'h' -> model {screen = HelpScreen}
         Key 'e' ->
           case index model of
-            Just _ -> model {screen = EditTaskScreen}
+            Just i ->
+              case elemAtIndex (tasks model) i of
+                Just task -> model {screen = EditTaskScreen (title task)}
+                Nothing -> model
             Nothing -> model
         Key 'c' ->
           model
@@ -305,9 +308,14 @@ view model = do
       putStrLn "New task: "
       text <- getLine
       return (CommandMsg (AddTask text))
-    EditTaskScreen -> do
+    EditTaskScreen originalTitle -> do
       clearScreen
       setCursorPosition 0 0
+      putStrLn "Original title was: "
+      setSGR [SetSwapForegroundBackground True]
+      putStrLn originalTitle
+      setSGR [Reset]
+      putStrLn ""
       putStrLn "Edited title (leave empty to cancel): "
       text <- getLine
       return (CommandMsg (EditTask (index model) text))
