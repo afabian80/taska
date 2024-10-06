@@ -37,7 +37,8 @@ data Task
   { title :: String,
     active :: Bool,
     lastTick :: Int,
-    state :: TaskState
+    state :: TaskState,
+    marked :: Bool
   }
   deriving (Show, Read, Eq)
 
@@ -217,6 +218,12 @@ update msg model =
             }
           where
             newTasks = deleteListIndexSafe (tasks model) (index model)
+        Key 'm' ->
+          model
+            { tasks = markTask (tasks model) (index model) (tick model),
+              tick = tick model + 1,
+              undoStack = stackPush (undoStack model) (tasks model)
+            }
         KeyUnknown mode c -> model {logs = newLog : logs model}
           where
             newLog = "Unknown character " ++ show c ++ " in " ++ show mode ++ " mode."
@@ -225,7 +232,7 @@ update msg model =
       case command of
         AddTask s ->
           model
-            { tasks = tasks model ++ [Task s False (tick model) Todo],
+            { tasks = tasks model ++ [Task s False (tick model) Todo False],
               screen = NormalScreen,
               tick = tick model + 1,
               index = Just 0,
@@ -274,6 +281,17 @@ markStartStop ts (Just i) time =
     newState Started = Stopped
     newState Stopped = Started
     newState Done = Done -- explicit Todo state is needed via different key
+
+markTask :: [Task] -> Maybe Int -> Int -> [Task]
+markTask ts Nothing _ = ts
+markTask ts (Just i) time =
+  case elemAtIndex ts i of
+    Nothing -> ts
+    (Just t) ->
+      replaceElemAtIndexIfExists
+        ts
+        i
+        (t {marked = not (marked t), lastTick = time})
 
 markState :: TaskState -> [Task] -> Maybe Int -> Int -> [Task]
 markState _ ts Nothing _ = ts
@@ -338,6 +356,7 @@ keys =
     ("d", "mark task as done"),
     ("Del", "delete task"),
     ("e", "edit task title"),
+    ("m", "mark"),
     ("q", "quit"),
     ("s", "start/stop task"),
     ("t", "mark task as todo"),
@@ -359,16 +378,16 @@ renderTask :: Int -> Task -> IO ()
 renderTask time task
   | active task = do
       setSGR [SetSwapForegroundBackground True]
-      putStrLn (">" ++ showState ++ title task)
+      putStrLn (">" ++ showState ++ mark ++ title task)
       setSGR [Reset]
   | isNew = do
       setSGR [SetColor Background Dull Green]
       setSGR [SetColor Foreground Dull Black]
-      putStrLn (" " ++ showState ++ title task)
+      putStrLn (" " ++ showState ++ mark ++ title task)
       setSGR [Reset]
   | otherwise = do
       setSGR [SetColor Foreground Dull White]
-      putStrLn (" " ++ showState ++ title task)
+      putStrLn (" " ++ showState ++ mark ++ title task)
       setSGR [Reset]
   where
     isNew = lastTick task >= time
@@ -379,6 +398,7 @@ renderTask time task
         Stopped -> "[T]"
         Done -> "[X]"
     showState = " " ++ showStateAux ++ " "
+    mark = if marked task then "* " else ""
 
 addCursor :: [Task] -> Maybe Int -> [Task]
 addCursor ts Nothing = ts
