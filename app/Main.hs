@@ -381,16 +381,16 @@ renderTask :: Int -> Task -> IO ()
 renderTask time task
   | active task = do
       setSGR [SetSwapForegroundBackground True]
-      putStrLn (">" ++ showState ++ mark ++ titleNoTags ++ tagsPart)
+      putStrLn taskLine
       setSGR [Reset]
   | isNew = do
       setSGR [SetColor Background Dull Green]
       setSGR [SetColor Foreground Dull Black]
-      putStrLn (" " ++ showState ++ mark ++ titleNoTags ++ tagsPart)
+      putStrLn taskLine
       setSGR [Reset]
   | otherwise = do
       setSGR [SetColor Foreground Dull White]
-      putStrLn (" " ++ showState ++ mark ++ titleNoTags ++ tagsPart)
+      putStrLn taskLine
       setSGR [Reset]
   where
     isNew = lastTick task >= time
@@ -405,6 +405,8 @@ renderTask time task
     titleTags = filter (isPrefixOf "#") (words (title task))
     tagsPart = if null titleTags then "" else " [" ++ unwords titleTags ++ "]"
     titleNoTags = unwords (filter (not . isPrefixOf "#") (words (title task)))
+    cursor = if active task then ">" else " "
+    taskLine = cursor ++ showState ++ mark ++ titleNoTags ++ tagsPart
 
 addCursor :: [Task] -> Maybe Int -> [Task]
 addCursor ts Nothing = ts
