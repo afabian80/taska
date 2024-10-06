@@ -33,13 +33,13 @@ data TaskState
   | Done
   deriving (Show, Eq, Read)
 
--- TODO highlight tags
+newtype TimeTick = TimeTick Int deriving (Show, Read, Eq, Ord)
 
 data Task
   = Task
   { title :: String,
     active :: Bool,
-    lastTick :: Int,
+    lastTick :: TimeTick,
     state :: TaskState,
     marked :: Bool
   }
@@ -54,12 +54,12 @@ data Screen
 
 data Model
   = Model
-  { tick :: Int,
+  { tick :: TimeTick,
     index :: Maybe Int,
     logs :: [String],
     tasks :: [Task],
     screen :: Screen,
-    compareTick :: Int,
+    compareTick :: TimeTick,
     undoStack :: Stack [Task]
   }
   deriving (Show, Read)
@@ -101,12 +101,12 @@ data Msg = KeyMsg Key | CommandMsg Command deriving (Show, Eq)
 initModel :: Model
 initModel =
   Model
-    { tick = 0,
+    { tick = TimeTick 0,
       index = Nothing,
       logs = [],
       tasks = [],
       screen = NormalScreen,
-      compareTick = 0,
+      compareTick = TimeTick 0,
       undoStack = stackNew
     }
 
@@ -197,25 +197,25 @@ update msg model =
         Key ' ' ->
           model
             { tasks = markDone (tasks model) (index model) (tick model),
-              tick = tick model + 1,
+              tick = nextTick (tick model),
               undoStack = stackPush (undoStack model) (tasks model)
             }
         Key 't' ->
           model
             { tasks = markTodo (tasks model) (index model) (tick model),
-              tick = tick model + 1,
+              tick = nextTick (tick model),
               undoStack = stackPush (undoStack model) (tasks model)
             }
         Key 's' ->
           model
             { tasks = markStartStop (tasks model) (index model) (tick model),
-              tick = tick model + 1,
+              tick = nextTick (tick model),
               undoStack = stackPush (undoStack model) (tasks model)
             }
         KeyDelete ->
           model
             { tasks = newTasks,
-              tick = tick model + 1,
+              tick = nextTick (tick model),
               index = if not (null newTasks) then Just 0 else Nothing,
               undoStack = stackPush (undoStack model) (tasks model)
             }
@@ -224,7 +224,7 @@ update msg model =
         Key 'm' ->
           model
             { tasks = markTask (tasks model) (index model) (tick model),
-              tick = tick model + 1,
+              tick = nextTick (tick model),
               undoStack = stackPush (undoStack model) (tasks model)
             }
         KeyUnknown mode c -> model {logs = newLog : logs model}
@@ -237,7 +237,7 @@ update msg model =
           model
             { tasks = tasks model ++ [Task s False (tick model) Todo False],
               screen = NormalScreen,
-              tick = tick model + 1,
+              tick = nextTick (tick model),
               index = Just 0,
               undoStack = stackPush (undoStack model) (tasks model)
             }
@@ -258,18 +258,18 @@ update msg model =
               undoStack = stackPush (undoStack model) (tasks model)
             }
           where
-            newTick = tick model + 1
+            newTick = nextTick (tick model)
         ToNormalMode ->
           model {screen = NormalScreen}
         Nop -> model
 
-markDone :: [Task] -> Maybe Int -> Int -> [Task]
+markDone :: [Task] -> Maybe Int -> TimeTick -> [Task]
 markDone = markState Done
 
-markTodo :: [Task] -> Maybe Int -> Int -> [Task]
+markTodo :: [Task] -> Maybe Int -> TimeTick -> [Task]
 markTodo = markState Todo
 
-markStartStop :: [Task] -> Maybe Int -> Int -> [Task]
+markStartStop :: [Task] -> Maybe Int -> TimeTick -> [Task]
 markStartStop ts Nothing _ = ts
 markStartStop ts (Just i) time =
   case elemAtIndex ts i of
@@ -285,7 +285,7 @@ markStartStop ts (Just i) time =
     newState Stopped = Started
     newState Done = Done -- explicit Todo state is needed via different key
 
-markTask :: [Task] -> Maybe Int -> Int -> [Task]
+markTask :: [Task] -> Maybe Int -> TimeTick -> [Task]
 markTask ts Nothing _ = ts
 markTask ts (Just i) time =
   case elemAtIndex ts i of
@@ -296,7 +296,7 @@ markTask ts (Just i) time =
         i
         (t {marked = not (marked t), lastTick = time})
 
-markState :: TaskState -> [Task] -> Maybe Int -> Int -> [Task]
+markState :: TaskState -> [Task] -> Maybe Int -> TimeTick -> [Task]
 markState _ ts Nothing _ = ts
 markState st ts (Just i) time =
   case elemAtIndex ts i of
@@ -373,11 +373,11 @@ renderKeyHelper = mapM_ renderKey
 renderKey :: (String, String) -> IO ()
 renderKey (k, s) = putStrLn $ k ++ ": " ++ s
 
-render :: [Task] -> Int -> IO ()
+render :: [Task] -> TimeTick -> IO ()
 render ts time = do
   mapM_ (renderTask time) ts
 
-renderTask :: Int -> Task -> IO ()
+renderTask :: TimeTick -> Task -> IO ()
 renderTask time task
   | active task = do
       setSGR [SetSwapForegroundBackground True]
@@ -477,3 +477,6 @@ readKey mode =
           '6' -> return KeyPgDown
           _ -> return (KeyUnknown (IMAwaitTilde x) c)
         _ -> return (KeyUnknown (IMAwaitTilde x) c)
+
+nextTick :: TimeTick -> TimeTick
+nextTick (TimeTick i) = TimeTick (i + 1)
