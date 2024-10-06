@@ -10,8 +10,8 @@ import Data.Stack (Stack, stackNew, stackPop, stackPush, stackSize)
 import GHC.IO.Handle (BufferMode (LineBuffering, NoBuffering), hSetBuffering)
 import GHC.IO.Handle.FD (stdin, stdout)
 import System.Console.ANSI
-  ( Color (Black, Green, White),
-    ColorIntensity (Dull),
+  ( Color (Black, Green, Magenta, White, Yellow),
+    ColorIntensity (Dull, Vivid),
     ConsoleLayer (Background, Foreground),
     SGR (Reset, SetColor, SetSwapForegroundBackground),
     clearScreen,
@@ -381,19 +381,28 @@ renderTask :: Int -> Task -> IO ()
 renderTask time task
   | active task = do
       setSGR [SetSwapForegroundBackground True]
-      renderTaskLine taskLine
+      renderTaskLine task
       setSGR [Reset]
-  | isNew = do
+  | lastTick task >= time = do
       setSGR [SetColor Background Dull Green]
       setSGR [SetColor Foreground Dull Black]
-      renderTaskLine taskLine
+      renderTaskLine task
       setSGR [Reset]
   | otherwise = do
       setSGR [SetColor Foreground Dull White]
-      renderTaskLine taskLine
+      renderTaskLine task
       setSGR [Reset]
+
+renderTaskLine :: Task -> IO ()
+renderTaskLine task = do
+  putStr cursor
+  putStr showState
+  putStr titleNoTags
+  setSGR [SetColor Foreground Vivid Yellow]
+  putStr tagsPart
+  setSGR [SetColor Background Vivid Magenta]
+  putStrLn mark
   where
-    isNew = lastTick task >= time
     showStateAux =
       case state task of
         Todo -> "[ ]"
@@ -401,15 +410,11 @@ renderTask time task
         Stopped -> "[T]"
         Done -> "[X]"
     showState = " " ++ showStateAux ++ " "
-    mark = if marked task then "* " else ""
+    mark = if marked task then "  " else ""
     titleTags = filter (isPrefixOf "#") (words (title task))
     tagsPart = if null titleTags then "" else " [" ++ unwords titleTags ++ "]"
     titleNoTags = unwords (filter (not . isPrefixOf "#") (words (title task)))
     cursor = if active task then ">" else " "
-    taskLine = cursor ++ showState ++ mark ++ titleNoTags ++ tagsPart
-
-renderTaskLine :: String -> IO ()
-renderTaskLine = putStrLn
 
 addCursor :: [Task] -> Maybe Int -> [Task]
 addCursor ts Nothing = ts
