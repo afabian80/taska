@@ -10,7 +10,7 @@ import Data.Stack (Stack, stackNew, stackPop, stackPush, stackSize)
 import GHC.IO.Handle (BufferMode (LineBuffering, NoBuffering), hSetBuffering)
 import GHC.IO.Handle.FD (stdin, stdout)
 import System.Console.ANSI
-  ( Color (Black, Green, Magenta, White, Yellow),
+  ( Color (Black, Green, Magenta, Red, White),
     ColorIntensity (Dull, Vivid),
     ConsoleLayer (Background, Foreground),
     SGR (Reset, SetColor, SetSwapForegroundBackground),
@@ -398,7 +398,7 @@ renderTaskLine task = do
   putStr cursor
   putStr showState
   putStr titleNoTags
-  setSGR [SetColor Foreground Vivid Yellow]
+  setSGR [SetColor Foreground Dull Red]
   putStr tagsPart
   setSGR [SetColor Background Vivid Magenta]
   putStrLn mark
