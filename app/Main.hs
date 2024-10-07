@@ -236,7 +236,7 @@ update msg model =
             }
         Key '+' ->
           model
-            { tasks = moveTaskUp (tasks model) (index model),
+            { tasks = moveTask pred (tasks model) (index model),
               index = newIndex,
               tick = nextTick (tick model)
             }
@@ -244,6 +244,17 @@ update msg model =
             newIndex =
               fmap
                 (\x -> max 0 (x - 1))
+                (index model)
+        Key '-' ->
+          model
+            { tasks = moveTask succ (tasks model) (index model),
+              index = newIndex,
+              tick = nextTick (tick model)
+            }
+          where
+            newIndex =
+              fmap
+                (\x -> min (length (tasks model) - 1) (x + 1))
                 (index model)
         Key c ->
           model {logs = ("No such command: " ++ show c) : logs model}
@@ -283,17 +294,17 @@ update msg model =
           model {screen = NormalScreen}
         Nop -> model
 
-moveTaskUp :: [a] -> Maybe Int -> [a]
-moveTaskUp ts Nothing = ts
-moveTaskUp ts (Just i) =
+moveTask :: (Int -> Int) -> [a] -> Maybe Int -> [a]
+moveTask _ ts Nothing = ts
+moveTask f ts (Just i) =
   case theItem of
     Nothing -> ts
-    Just _ -> case prevItem of
+    Just _ -> case otherItem of
       Nothing -> ts
-      Just _ -> swapExistingIndexes ts i (i - 1)
+      Just _ -> swapExistingIndexes ts i (f i)
   where
     theItem = elemAtIndex ts i
-    prevItem = elemAtIndex ts (i - 1)
+    otherItem = elemAtIndex ts (f i)
 
 swapExistingIndexes :: [a] -> Int -> Int -> [a]
 swapExistingIndexes xs i1 i2 =
@@ -412,7 +423,9 @@ keys =
     ("t", "mark task as todo"),
     ("U", "undo"),
     ("Up/Down", "move in list"),
-    ("F8", "clean up done tasks")
+    ("F8", "clean up done tasks"),
+    ("-", "move task down"),
+    ("+", "move task up")
   ]
 
 renderKeyHelper :: [(String, String)] -> IO ()
