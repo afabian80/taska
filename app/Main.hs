@@ -234,6 +234,17 @@ update msg model =
               tick = nextTick (tick model),
               undoStack = stackPush (undoStack model) (tasks model)
             }
+        Key '+' ->
+          model
+            { tasks = moveTaskUp (tasks model) (index model),
+              index = newIndex,
+              tick = nextTick (tick model)
+            }
+          where
+            newIndex =
+              fmap
+                (\x -> max 0 (x - 1))
+                (index model)
         Key c ->
           model {logs = ("No such command: " ++ show c) : logs model}
         KeyUnknown mode c -> model {logs = newLog : logs model}
@@ -271,6 +282,26 @@ update msg model =
         ToNormalMode ->
           model {screen = NormalScreen}
         Nop -> model
+
+moveTaskUp :: [a] -> Maybe Int -> [a]
+moveTaskUp ts Nothing = ts
+moveTaskUp ts (Just i) =
+  case theItem of
+    Nothing -> ts
+    Just _ -> case prevItem of
+      Nothing -> ts
+      Just _ -> swapExistingIndexes ts i (i - 1)
+  where
+    theItem = elemAtIndex ts i
+    prevItem = elemAtIndex ts (i - 1)
+
+swapExistingIndexes :: [a] -> Int -> Int -> [a]
+swapExistingIndexes xs i1 i2 =
+  replaceElemAtIndexIfExists xs1 i2 elemAtIndex1
+  where
+    elemAtIndex1 = xs !! i1
+    elemAtIndex2 = xs !! i2
+    xs1 = replaceElemAtIndexIfExists xs i1 elemAtIndex2
 
 cleanUp :: TimeTick -> [Task] -> [Task]
 cleanUp time = filter (not . deletableTask time)
