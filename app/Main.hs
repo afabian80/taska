@@ -234,6 +234,8 @@ update msg model =
               tick = nextTick (tick model),
               undoStack = stackPush (undoStack model) (tasks model)
             }
+        Key c ->
+          model {logs = ("No such command: " ++ show c) : logs model}
         KeyUnknown mode c -> model {logs = newLog : logs model}
           where
             newLog = "Unknown character " ++ show c ++ " in " ++ show mode ++ " mode."
