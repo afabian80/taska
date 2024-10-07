@@ -82,6 +82,7 @@ data Key
   | KeyEnd
   | KeyDelete
   | KeyEsc
+  | KeyF8
   | Key Char
   | KeyUnknown InputMode Char
   deriving (Show, Eq)
@@ -221,6 +222,12 @@ update msg model =
             }
           where
             newTasks = deleteListIndexSafe (tasks model) (index model)
+        KeyF8 ->
+          model
+            { tick = nextTick (tick model),
+              tasks = cleanUp (compareTick model) (tasks model),
+              undoStack = stackPush (undoStack model) (tasks model)
+            }
         Key 'm' ->
           model
             { tasks = markTask (tasks model) (index model) (tick model),
@@ -262,6 +269,13 @@ update msg model =
         ToNormalMode ->
           model {screen = NormalScreen}
         Nop -> model
+
+cleanUp :: TimeTick -> [Task] -> [Task]
+cleanUp time = filter (not . deletableTask time)
+
+deletableTask :: TimeTick -> Task -> Bool
+deletableTask time task =
+  (lastTick task < time) && (state task == Done)
 
 markDone :: [Task] -> Maybe Int -> TimeTick -> [Task]
 markDone = markState Done
@@ -364,7 +378,8 @@ keys =
     ("s", "start/stop task"),
     ("t", "mark task as todo"),
     ("U", "undo"),
-    ("Up/Down", "Move in list")
+    ("Up/Down", "move in list"),
+    ("F8", "clean up done tasks")
   ]
 
 renderKeyHelper :: [(String, String)] -> IO ()
@@ -465,6 +480,7 @@ readKey mode =
         'D' -> return KeyLeft
         'F' -> return KeyEnd
         'H' -> return KeyHome
+        '1' -> return KeyF8
         '3' -> return KeyDelete
         '5' -> readKey (IMAwaitTilde '5')
         '6' -> readKey (IMAwaitTilde '6')
